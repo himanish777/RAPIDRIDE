@@ -32,6 +32,26 @@ async function login() {
 
     if (data.success) {
       localStorage.setItem("token", data.token);
+      
+      // Store user data based on role
+      if (data.user) {
+        const userData = {
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          phone: data.user.phone,
+          role: data.user.role
+        };
+        
+        if (data.user.role === 'admin') {
+          localStorage.setItem('rapidride_admin', JSON.stringify(userData));
+        } else if (data.user.role === 'driver') {
+          localStorage.setItem('rapidride_driver', JSON.stringify(userData));
+        } else {
+          localStorage.setItem('rapidride_rider', JSON.stringify(userData));
+        }
+      }
+      
       alert("Login successful!");
       
       // Redirect based on user role

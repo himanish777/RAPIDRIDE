@@ -783,13 +783,11 @@ class DashboardController {
     try {
       const response = await this.api.getCurrentRide();
       
-      // Only restore ride if it has a driver assigned and is in active state
-      // Don't show rides that are just 'searching' - those will be handled by new requests
+      // Only show rides that are actively in progress (not scheduled or ended)
       if (response.ride && 
           response.ride.status !== 'completed' && 
           response.ride.status !== 'cancelled' &&
-          response.ride.status !== 'searching' &&
-          response.ride.driver) {
+          response.ride.status !== 'scheduled') {
         
         const ride = response.ride;
         
@@ -811,7 +809,7 @@ class DashboardController {
         this.showCurrentRideCard(ride);
         this.updateRideStatus(ride.status);
         
-        console.log('✅ Restored active ride with driver:', this.rideManager.currentRide);
+        console.log('✅ Restored active ride:', this.rideManager.currentRide);
       }
     } catch (error) {
       console.error('Failed to load current ride:', error);
@@ -1443,6 +1441,45 @@ class DashboardController {
       }
     });
 
+    // Listen for scheduled ride activation
+    this.socketManager.on('ride:scheduled_activated', async (data) => {
+      console.log('⏰ Scheduled ride activated:', data);
+      
+      if (data.ride) {
+        const ride = data.ride;
+        
+        // Clear any old ride data first
+        this.rideManager.currentRide = null;
+        this.currentRideId = null;
+        
+        // Show notification to user
+        this.notificationManager.show('Your scheduled ride is now searching for drivers!', 'info');
+        
+        // Store ride data
+        this.currentRideId = ride._id;
+        try {
+          localStorage.setItem('currentRideId', ride._id);
+          localStorage.setItem('currentRideData', JSON.stringify(ride));
+        } catch (e) {
+          console.error('Failed to store ride data:', e);
+        }
+        
+        // Start the ride in searching state (exactly like handleRideRequest does)
+        this.rideManager.startRide(ride);
+        this.showCurrentRideCard(ride);
+        this.updateRideStatus('searching');
+        
+        // Subscribe to ride updates
+        if (this.socketManager && this.socketManager.isConnected()) {
+          this.socketManager.subscribeToRide(ride._id);
+          console.log(`✅ Subscribed to ride ${ride._id} updates`);
+        }
+        
+        // Reload scheduled rides to remove this one from the list
+        await this.loadScheduledRides();
+      }
+    });
+
     this.socketManager.on('driver_arriving', data => {
       this.updateRideStatus('arriving');
       this.startETACountdown(data.eta);
@@ -1587,24 +1624,23 @@ class DashboardController {
   async handleScheduleRide() {
     const pickup = document.getElementById('schedulePickupInput').value;
     const drop = document.getElementById('scheduleDropInput').value;
-    const time = document.getElementById('scheduleDateTimeInput').value;
+    const datetime = document.getElementById('scheduleDateTimeInput').value;
     const rideType = document.getElementById('scheduleRideTypeSelect').value;
     const recurrence = document.getElementById('scheduleRecurrenceSelect').value;
 
-    if (!pickup || !drop || !time) {
+    if (!pickup || !drop || !datetime) {
       this.notificationManager.show('Please fill all fields', 'error');
       return;
     }
 
-    // Create datetime from time input
+    // Parse datetime-local input (format: YYYY-MM-DDTHH:MM)
+    const scheduledTime = new Date(datetime);
     const now = new Date();
-    const [hours, minutes] = time.split(':');
-    const scheduledTime = new Date();
-    scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
     
-    // If time has passed today and it's one-time, schedule for tomorrow
-    if (recurrence === 'once' && scheduledTime <= now) {
-      scheduledTime.setDate(scheduledTime.getDate() + 1);
+    // Validate scheduled time is in the future
+    if (scheduledTime <= now) {
+      this.notificationManager.show('Please select a future date and time', 'error');
+      return;
     }
 
     try {

@@ -45,7 +45,16 @@ export class SocketManager {
     this.socket.on('connect', () => {
       console.log('✅ Socket connected:', this.socket.id);
       this.reconnectAttempts = 0;
-      this.emit('rider_online', { riderId: this.getRiderId() });
+      const riderId = this.getRiderId();
+      console.log('🔍 DEBUG: riderId from getRiderId():', riderId);
+      this.emit('rider_online', { riderId });
+      // Subscribe to personal rider room for notifications
+      if (riderId) {
+        console.log('📡 Emitting rider:subscribe with riderId:', riderId);
+        this.emit('rider:subscribe', { riderId });
+      } else {
+        console.error('❌ Cannot subscribe - riderId is null/undefined');
+      }
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -206,9 +215,9 @@ export class SocketManager {
 
   // Get rider ID from local storage
   getRiderId() {
-    const driver = localStorage.getItem('rapidride_driver');
-    if (driver) {
-      const parsed = JSON.parse(driver);
+    const rider = localStorage.getItem('rapidride_rider');
+    if (rider) {
+      const parsed = JSON.parse(rider);
       return parsed.id;
     }
     return null;

@@ -2,7 +2,8 @@ import Ride from "../models/Ride.js";
 import Rider from "../models/Rider.js";
 import logger from '../config/logger.js';
 import { metrics } from '../config/metrics.js';
-import { emitToAdmin, emitToRide, emitToDrivers } from '../config/socketHelper.js';
+import { emitToAdmin, emitToRide, emitToDrivers, emitToRider } from '../config/socketHelper.js';
+import { scheduledRidesQueue, getJobId } from '../config/queue.js';
 
 // ===== USER PROFILE SERVICES =====
 export const getUserProfileService = async (userId) => {
@@ -147,11 +148,28 @@ export const cancelRideService = async (userId, rideId) => {
       return { success: false, message: 'Cannot cancel this ride' };
     }
 
+    // If ride is scheduled, remove the BullMQ job
+    if (ride.status === 'scheduled') {
+      try {
+        const jobId = getJobId(rideId);
+        const job = await scheduledRidesQueue.getJob(jobId);
+        if (job) {
+          await job.remove();
+          logger.info('Removed scheduled ride job from queue', { rideId, jobId });
+        }
+      } catch (queueErr) {
+        logger.error('Error removing scheduled job from queue', { error: queueErr.message, rideId });
+        // Continue with cancellation even if job removal fails
+      }
+    }
+
     ride.status = 'cancelled';
     
     // Track cancellation metric
     metrics.ridesCancelledCounter.inc({ cancelled_by: 'rider' });
-    metrics.activeRidesGauge.dec();
+    if (ride.status !== 'scheduled') {
+      metrics.activeRidesGauge.dec();
+    }
     await ride.save();
 
     // Emit real-time event to admin and ride room
@@ -161,6 +179,7 @@ export const cancelRideService = async (userId, rideId) => {
     return { success: true, ride };
   } catch (err) {
     console.error('cancelRideService error:', err);
+    logger.error('cancelRideService error', { error: err.message, userId, rideId });
     throw err;
   }
 };
@@ -247,9 +266,33 @@ export const scheduleRideService = async (userId, { pickup, drop, rideType, sche
       recurringDays
     });
 
+    // Enqueue BullMQ job to process this ride at scheduled time
+    const scheduledTime = new Date(scheduledAt).getTime();
+    const now = Date.now();
+    const delay = Math.max(0, scheduledTime - now);
+
+    await scheduledRidesQueue.add(
+      'process-scheduled-ride',
+      { rideId: ride._id.toString() },
+      {
+        jobId: getJobId(ride._id.toString()),
+        delay,
+        removeOnComplete: true,
+        removeOnFail: false
+      }
+    );
+
+    logger.info('Scheduled ride created and job enqueued', { 
+      rideId: ride._id, 
+      userId, 
+      scheduledAt, 
+      delay: `${Math.round(delay / 1000)}s` 
+    });
+
     return { success: true, ride };
   } catch (err) {
     console.error('scheduleRideService error:', err);
+    logger.error('scheduleRideService error', { error: err.message, userId });
     throw err;
   }
 };
@@ -418,6 +461,131 @@ export const getInvoiceService = async (userId, rideId) => {
     };
   } catch (err) {
     console.error('getInvoiceService error:', err);
+    throw err;
+  }
+};
+
+// ===== SCHEDULED RIDE JOB PROCESSOR =====
+export const processScheduledRideJob = async (rideId) => {
+  try {
+    const ride = await Ride.findById(rideId).populate('rider', 'name phone');
+    
+    if (!ride) {
+      logger.error('Scheduled ride not found', { rideId });
+      return { success: false, message: 'Ride not found' };
+    }
+
+    // Skip if ride is no longer scheduled (may have been cancelled)
+    if (ride.status !== 'scheduled') {
+      logger.info('Scheduled ride already processed or cancelled', { rideId, status: ride.status });
+      return { success: false, message: 'Ride not in scheduled status' };
+    }
+
+    // Change status to searching to start driver assignment
+    ride.status = 'searching';
+
+    // Handle recurring rides - schedule next occurrence
+    if (ride.isRecurring && ride.recurringDays && ride.recurringDays.length > 0) {
+      const currentScheduled = new Date(ride.scheduledAt);
+      const nextDate = new Date(currentScheduled);
+      
+      // Find next matching day within 7 days
+      for (let i = 1; i <= 7; i++) {
+        nextDate.setDate(nextDate.getDate() + 1);
+        if (ride.recurringDays.includes(nextDate.getDay())) {
+          // Keep the same time of day
+          nextDate.setHours(currentScheduled.getHours());
+          nextDate.setMinutes(currentScheduled.getMinutes());
+          nextDate.setSeconds(0);
+          nextDate.setMilliseconds(0);
+          
+          ride.scheduledAt = nextDate;
+          
+          // Enqueue next occurrence
+          const delay = Math.max(0, nextDate.getTime() - Date.now());
+          await scheduledRidesQueue.add(
+            'process-scheduled-ride',
+            { rideId: ride._id.toString() },
+            {
+              jobId: getJobId(ride._id.toString()),
+              delay,
+              removeOnComplete: true,
+              removeOnFail: false
+            }
+          );
+          
+          logger.info('Recurring ride rescheduled', { 
+            rideId, 
+            nextScheduledAt: nextDate.toISOString(),
+            delay: `${Math.round(delay / 1000)}s`
+          });
+          break;
+        }
+      }
+    } else {
+      // One-time ride - clear scheduledAt
+      ride.scheduledAt = null;
+    }
+
+    await ride.save();
+
+    // Track metrics
+    metrics.ridesRequestedCounter.inc({ status: 'searching' });
+    metrics.activeRidesGauge.inc();
+
+    // Emit events to admin
+    emitToAdmin('ride:created', {
+      rideId: ride._id,
+      userId: ride.rider?._id,
+      pickup: ride.pickupLocation?.address,
+      drop: ride.dropoffLocation?.address,
+      rideType: ride.type || 'economy',
+      status: 'searching'
+    });
+
+    // Emit to available drivers (same payload as requestRideService)
+    emitToDrivers('ride:newRequest', {
+      rideId: ride._id,
+      rider: {
+        id: ride.rider?._id,
+        name: ride.rider?.name,
+        phone: ride.rider?.phone
+      },
+      pickup: ride.pickupLocation?.address,
+      drop: ride.dropoffLocation?.address,
+      pickupLocation: ride.pickupLocation,
+      dropoffLocation: ride.dropoffLocation,
+      type: ride.type,
+      status: ride.status,
+      createdAt: ride.createdAt
+    });
+
+    // Emit to rider to show the activated scheduled ride
+    const riderId = ride.rider?._id?.toString();
+    console.log(`📱 Emitting ride:scheduled_activated to rider_${riderId}`, {
+      rideId: ride._id.toString(),
+      status: ride.status
+    });
+    
+    emitToRider(riderId, 'ride:scheduled_activated', {
+      ride: {
+        _id: ride._id,
+        pickupLocation: ride.pickupLocation,
+        dropoffLocation: ride.dropoffLocation,
+        rideType: ride.type || 'economy',
+        fare: ride.fare,
+        status: ride.status,
+        createdAt: ride.createdAt
+      }
+    });
+
+    logger.info('Scheduled ride activated', { rideId, userId: ride.rider?._id });
+    console.log(`📢 Scheduled ride ${ride._id} activated and sent to drivers`);
+
+    return { success: true, ride };
+  } catch (err) {
+    console.error('processScheduledRideJob error:', err);
+    logger.error('processScheduledRideJob error', { error: err.message, rideId });
     throw err;
   }
 };

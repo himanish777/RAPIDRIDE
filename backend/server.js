@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
-// import { connectRedis } from "./config/redis.js";
+import { connectRedis } from "./config/redis.js";
 import app from "./app.js";
 import http from 'http';
 import { Server } from 'socket.io';
@@ -12,9 +12,13 @@ dotenv.config();
 connectDB();
 
 // Connect to Redis
-// (async () => {
-//   await connectRedis();
-// })();
+(async () => {
+  try {
+    await connectRedis();
+  } catch (err) {
+    console.error('Failed to connect to Redis:', err.message);
+  }
+})();
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -43,6 +47,16 @@ io.on('connection', (socket) => {
   socket.on('admin:subscribe', () => {
     socket.join('admin_room');
     // logger.info('Socket joined admin room', { socketId: socket.id });
+  });
+
+  // Rider subscribes to personal room for notifications
+  socket.on('rider:subscribe', (data) => {
+    if (data && data.riderId) {
+      socket.join(`rider_${data.riderId}`);
+      console.log(`🚴 Rider ${data.riderId} joined room rider_${data.riderId}`);
+    } else {
+      console.log(`⚠️ Rider tried to subscribe without riderId:`, data);
+    }
   });
 
   // Driver subscribes to receive ride requests
@@ -115,3 +129,6 @@ server.listen(PORT, '0.0.0.0', () => {
 
 // Export io for use in services
 export { io };
+
+// Start scheduled rides worker (BullMQ background processor)
+import './jobs/scheduledRideWorker.js';

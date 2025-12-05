@@ -30,6 +30,13 @@ export const emitToRide = (rideId, event, data) => {
   }
 };
 
+// Emit events to specific rider
+export const emitToRider = (riderId, event, data) => {
+  if (ioInstance) {
+    ioInstance.to(`rider_${riderId}`).emit(event, data);
+  }
+};
+
 // Broadcast to all connected clients
 export const broadcastEvent = (event, data) => {
   if (ioInstance) {
