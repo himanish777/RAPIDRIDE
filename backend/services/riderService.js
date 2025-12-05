@@ -1,10 +1,13 @@
 import Ride from "../models/Ride.js";
-import User from "../models/User.js";
+import Rider from "../models/Rider.js";
+import logger from '../config/logger.js';
+import { metrics } from '../config/metrics.js';
+import { emitToAdmin, emitToRide, emitToDrivers } from '../config/socketHelper.js';
 
 // ===== USER PROFILE SERVICES =====
 export const getUserProfileService = async (userId) => {
   try {
-    const user = await User.findById(userId).select('-password');
+    const user = await Rider.findById(userId).select('-password');
     if (!user) {
       return { success: false, message: 'User not found' };
     }
@@ -17,7 +20,7 @@ export const getUserProfileService = async (userId) => {
 
 export const updateUserProfileService = async (userId, updates) => {
   try {
-    const user = await User.findByIdAndUpdate(userId, updates, { new: true }).select('-password');
+    const user = await Rider.findByIdAndUpdate(userId, updates, { new: true }).select('-password');
     return { success: true, user };
   } catch (err) {
     console.error('updateUserProfileService error:', err);
@@ -32,6 +35,16 @@ export const requestRideService = async (userId, { pickup, drop, rideType }) => 
       return { success: false, message: 'pickup and drop required' };
     }
 
+    // Check if user already has an active ride
+    const existingRide = await Ride.findOne({
+      rider: userId,
+      status: { $nin: ['completed', 'cancelled'] }
+    });
+
+    if (existingRide) {
+      return { success: false, message: 'You already have an active ride. Please complete or cancel it first.' };
+    }
+
     const ride = await Ride.create({
       rider: userId,
       pickupLocation: { address: pickup },
@@ -40,9 +53,45 @@ export const requestRideService = async (userId, { pickup, drop, rideType }) => 
       status: 'searching'
     });
 
+    // Populate rider info for drivers
+    await ride.populate('rider', 'name phone');
+
+    // Track metrics
+    metrics.ridesRequestedCounter.inc({ status: 'searching' });
+    metrics.activeRidesGauge.inc();
+
+    // Emit real-time event to admin
+    emitToAdmin('ride:created', { 
+      rideId: ride._id, 
+      userId, 
+      pickup, 
+      drop, 
+      rideType: rideType || 'economy',
+      status: 'searching'
+    });
+
+    // Emit ride request to all available drivers
+    emitToDrivers('ride:newRequest', {
+      rideId: ride._id,
+      rider: {
+        id: ride.rider._id,
+        name: ride.rider.name,
+        phone: ride.rider.phone
+      },
+      pickup: ride.pickupLocation.address,
+      drop: ride.dropoffLocation.address,
+      pickupLocation: ride.pickupLocation,
+      dropoffLocation: ride.dropoffLocation,
+      type: ride.type,
+      status: ride.status,
+      createdAt: ride.createdAt
+    });
+
+    console.log(`🚗 New ride request ${ride._id} sent to available drivers`);
+    logger.info('Ride requested', { userId, rideId: ride._id, type: rideType || 'economy' });
     return { success: true, ride };
   } catch (err) {
-    console.error('requestRideService error:', err);
+    logger.error('requestRideService error', { error: err.message, userId });
     throw err;
   }
 };
@@ -99,7 +148,15 @@ export const cancelRideService = async (userId, rideId) => {
     }
 
     ride.status = 'cancelled';
+    
+    // Track cancellation metric
+    metrics.ridesCancelledCounter.inc({ cancelled_by: 'rider' });
+    metrics.activeRidesGauge.dec();
     await ride.save();
+
+    // Emit real-time event to admin and ride room
+    emitToAdmin('ride:cancelled', { rideId: ride._id, userId });
+    emitToRide(rideId, 'ride:status_changed', { status: 'cancelled', ride });
 
     return { success: true, ride };
   } catch (err) {
@@ -159,10 +216,24 @@ export const estimateFareService = async ({ pickup, drop, rideType }) => {
   }
 };
 
-export const scheduleRideService = async (userId, { pickup, drop, rideType, scheduledAt }) => {
+export const scheduleRideService = async (userId, { pickup, drop, rideType, scheduledAt, recurrence }) => {
   try {
     if (!pickup || !drop || !scheduledAt) {
       return { success: false, message: 'Missing required fields' };
+    }
+
+    let isRecurring = false;
+    let recurringDays = [];
+
+    if (recurrence && recurrence !== 'once') {
+      isRecurring = true;
+      if (recurrence === 'daily') {
+        recurringDays = [0, 1, 2, 3, 4, 5, 6]; // All days
+      } else if (recurrence === 'weekdays') {
+        recurringDays = [1, 2, 3, 4, 5]; // Mon-Fri
+      } else if (recurrence === 'weekends') {
+        recurringDays = [0, 6]; // Sat-Sun
+      }
     }
 
     const ride = await Ride.create({
@@ -171,7 +242,9 @@ export const scheduleRideService = async (userId, { pickup, drop, rideType, sche
       dropoffLocation: { address: drop },
       type: rideType || 'economy',
       scheduledAt: new Date(scheduledAt),
-      status: 'scheduled'
+      status: 'scheduled',
+      isRecurring,
+      recurringDays
     });
 
     return { success: true, ride };

@@ -1,0 +1,147 @@
+﻿/* Global Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+/* Use background image and align box to right */
+body {
+  background: url('rapidride_bg.jpg') center/cover no-repeat fixed;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; /* Align box right */
+  padding: 0 6%; /* Right spacing */
+}
+
+/* Container */
+.container-main {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Modern Card */
+.modern-box {
+  background: white;
+  border-radius: 16px;
+  padding: 35px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.18);
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Logo block */
+.logo-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+/* When inside the box */
+.logo-line.inside-box {
+  margin-bottom: 22px;
+  justify-content: center;
+}
+
+.app-logo {
+  width: 99px;
+  height: auto;
+  border-radius: 6px;
+}
+
+.title-text h1 {
+  font-size: 32px;
+  color: #2E4053;
+  font-weight: 800;
+}
+
+.title-text p {
+  font-size: 14px;
+  color: #333;
+}
+
+/* Form groups */
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  font-size: 14px;
+  color: #2E4053;
+  font-weight: 600;
+}
+
+/* Inputs */
+input, select {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 15px;
+  background: #BFC9CA;
+  border: 2px solid #2E4053;
+  border-radius: 10px;
+  color: #2E4053;
+  height: 46px;
+  outline: none;
+  transition: 0.3s;
+}
+
+input:focus, select:focus {
+  border-color: #2E4053;
+  box-shadow: 0 0 0 3px rgba(46, 64, 83, 0.25);
+}
+
+/* Button */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: #2E4053;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-top: 6px;
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(46,64,83,0.35);
+}
+
+/* Footer */
+.form-footer {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.form-footer p {
+  color: #2E4053;
+}
+
+.form-footer a {
+  color: #2E4053;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.form-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .modern-box {
+    padding: 28px 22px;
+  }
+}
+

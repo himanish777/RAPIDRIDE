@@ -8,43 +8,48 @@
   <link rel="stylesheet" href="login.css">
 </head>
 <body>
-
-  <div class="container-main">
-    <div class="modern-box">
-
-      <!-- Logo INSIDE the box -->
-      <div class="logo-line inside-box">
-        <img src="rapidride_logo.png" class="app-logo" alt="RapidRide Logo">
-        <div class="title-text">
-          <h1>RAPIDRIDE</h1>
-          <p>Login to continue</p>
+  <div class="layout-wrapper">
+    <!-- Left side: Background image -->
+    <div class="image-section"></div>
+    
+    <!-- Right side: Full teal panel with centered card -->
+    <div class="teal-panel">
+      <div class="form-container">
+        <div class="logo-line">
+          <img src="rapidride_logo.png" class="app-logo" alt="RapidRide Logo">
+          <div class="title-text">
+            <h1>RAPIDRIDE</h1>
+            <p>Login to continue</p>
+          </div>
         </div>
-      </div>
 
-      <!-- Email Restored -->
-      <div class="form-group">
-        <label>Email</label>
-        <input id="email" type="email" placeholder="Enter your email">
-      </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input id="email" type="email" placeholder="Enter your email">
+        </div>
 
-      <div class="form-group">
-        <label>Password</label>
-        <input id="password" type="password" placeholder="Enter your password">
-      </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input id="password" type="password" placeholder="Enter your password">
+          <div style="text-align: right; margin-top: 8px;">
+            <a href="forgot-password.html" style="color: #0D9488; font-size: 13px; text-decoration: none; font-weight: 500;">Forgot Password?</a>
+          </div>
+        </div>
 
-      <div class="form-group">
-        <label>Role</label>
-        <select id="role">
-          <option value="rider">Rider</option>
-          <option value="driver">Driver</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select id="role">
+            <option value="rider">Rider</option>
+            <option value="driver">Driver</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
 
-      <button class="btn-primary" onclick="login()">Login</button>
+        <button class="btn-primary" onclick="login()">Login</button>
 
-      <div class="form-footer">
-        <p>Don't have an account? <a href="signup.html">Signup</a></p>
+        <div class="form-footer">
+          <p>Don't have an account? <a href="signup.html">Signup</a></p>
+        </div>
       </div>
     </div>
   </div>

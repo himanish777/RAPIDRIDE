@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RapidRide Admin Dashboard</title>
+  <link rel="icon" type="image/png" href="../../rapidride_logo.png">
+  <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="logo-nav">
+        <img src="../../rapidride_logo.png" alt="RapidRide Logo" class="logo-icon" style="width: 32px; height: 32px;">
+        <span class="logo-text">RapidRide Admin</span>
+      </div>
+      <div class="nav-right">
+        <button class="nav-icon-btn" id="refreshBtn" title="Refresh Data">
+          🔄
+        </button>
+        <div class="profile-dropdown">
+          <button class="profile-btn" id="profileBtn">
+            <div class="profile-avatar">A</div>
+            <span class="profile-name" id="adminName">Admin</span>
+            <span class="dropdown-arrow">▼</span>
+          </button>
+          <div class="dropdown-menu" id="dropdownMenu">
+            <a href="#" class="dropdown-item logout" id="logoutBtn">
+              🚪 Logout
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== DASHBOARD WRAPPER ===== -->
+  <div class="dashboard-wrapper-admin">
+    <!-- Tabs Navigation -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" data-tab="overview">📊 Overview</button>
+      <button class="tab-btn" data-tab="metrics">📈 Metrics</button>
+      <button class="tab-btn" data-tab="rides">🚗 Rides</button>
+      <button class="tab-btn" data-tab="users">👥 Users</button>
+      <button class="tab-btn" data-tab="revenue">💰 Revenue</button>
+      <button class="tab-btn" data-tab="logs">📝 Logs</button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content active" id="overview-tab">
+      <!-- Overview Statistics -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-info">
+            <div class="stat-value" id="totalUsers">0</div>
+            <div class="stat-label">Total Users</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🚗</div>
+          <div class="stat-info">
+            <div class="stat-value" id="totalRides">0</div>
+            <div class="stat-label">Total Rides</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-info">
+            <div class="stat-value" id="completedRides">0</div>
+            <div class="stat-label">Completed</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-info">
+            <div class="stat-value" id="activeRides">0</div>
+            <div class="stat-label">Active Now</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-info">
+            <div class="stat-value">₹<span id="totalRevenue">0</span></div>
+            <div class="stat-label">Total Revenue</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📅</div>
+          <div class="stat-info">
+            <div class="stat-value" id="todayRides">0</div>
+            <div class="stat-label">Today's Rides</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metrics Tab -->
+    <div class="tab-content" id="metrics-tab">
+      <div class="card">
+        <h3 class="card-title">System Metrics</h3>
+        <p class="metrics-info">📊 Prometheus metrics available at: <code>/metrics</code></p>
+        <div class="metrics-stats">
+          <div class="metric-item">
+            <div class="metric-label">Request Rate</div>
+            <div class="metric-value" id="requestRate">Loading...</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-label">Error Rate</div>
+            <div class="metric-value" id="errorRate">Loading...</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-label">Avg Response Time</div>
+            <div class="metric-value" id="avgResponseTime">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Business Metrics (Last 7 Days)</h3>
+        <div id="businessMetrics" class="business-metrics"></div>
+      </div>
+    </div>
+
+    <!-- Rides Tab -->
+    <div class="tab-content" id="rides-tab">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">All Rides</h3>
+          <div class="filters">
+            <select id="rideStatusFilter" class="filter-select">
+              <option value="">All Status</option>
+              <option value="searching">Searching</option>
+              <option value="assigned">Assigned</option>
+              <option value="on_trip">On Trip</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <button class="btn-secondary" id="filterRidesBtn">Filter</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Ride ID</th>
+                <th>Rider</th>
+                <th>Driver</th>
+                <th>Pickup</th>
+                <th>Dropoff</th>
+                <th>Status</th>
+                <th>Fare</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="ridesTableBody">
+              <tr>
+                <td colspan="8" class="loading-cell">Loading rides...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="ridesPagination"></div>
+      </div>
+    </div>
+
+    <!-- Users Tab -->
+    <div class="tab-content" id="users-tab">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">All Users</h3>
+          <div class="filters">
+            <select id="userRoleFilter" class="filter-select">
+              <option value="">All Roles</option>
+              <option value="rider">Riders</option>
+              <option value="driver">Drivers</option>
+            </select>
+            <button class="btn-secondary" id="filterUsersBtn">Filter</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>User ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr>
+                <td colspan="7" class="loading-cell">Loading users...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="usersPagination"></div>
+      </div>
+    </div>
+
+    <!-- Revenue Tab -->
+    <div class="tab-content" id="revenue-tab">
+      <div class="card">
+        <h3 class="card-title">Revenue Analytics (Last 30 Days)</h3>
+        <div class="revenue-summary">
+          <div class="revenue-stat">
+            <div class="revenue-label">Total Revenue</div>
+            <div class="revenue-value">₹<span id="revenueTotalValue">0</span></div>
+          </div>
+          <div class="revenue-stat">
+            <div class="revenue-label">Total Trips</div>
+            <div class="revenue-value" id="revenueTotalTrips">0</div>
+          </div>
+          <div class="revenue-stat">
+            <div class="revenue-label">Average Fare</div>
+            <div class="revenue-value">₹<span id="revenueAvgFare">0</span></div>
+          </div>
+        </div>
+        <div id="revenueChart" class="chart-placeholder">
+          📊 Revenue chart will be displayed here
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Popular Routes</h3>
+        <div id="popularRoutes" class="popular-routes"></div>
+      </div>
+    </div>
+
+    <!-- Logs Tab -->
+    <div class="tab-content" id="logs-tab">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">System Logs</h3>
+          <div class="filters">
+            <select id="logLevelFilter" class="filter-select">
+              <option value="">All Levels</option>
+              <option value="error">Error</option>
+              <option value="warn">Warning</option>
+              <option value="info">Info</option>
+            </select>
+            <button class="btn-secondary" id="refreshLogsBtn">Refresh</button>
+          </div>
+        </div>
+        <div class="logs-container" id="logsContainer">
+          <div class="log-item info">
+            <span class="log-timestamp">2025-12-01 15:30:00</span>
+            <span class="log-level">INFO</span>
+            <span class="log-message">System logs will appear here</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="../assets/js/dashboard.js"></script>
+</body>
+</html>

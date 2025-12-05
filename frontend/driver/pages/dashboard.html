@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RapidRide - Driver Dashboard</title>
+  <link rel="icon" type="image/png" href="../../rapidride_logo.png">
+  <link rel="stylesheet" href="../assets/css/dashboard.css">
+
+  <!-- Leaflet (OpenStreetMap) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Fallback if Leaflet fails to load -->
+  <script>
+    (function(){
+      function loaded(){ return typeof L !== 'undefined'; }
+      if (!loaded()) {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+        s.onload = function(){ console.log('Leaflet fallback loaded from jsdelivr'); };
+        document.head.appendChild(s);
+      }
+    })();
+  </script>
+</head>
+<body>
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-left">
+        <div class="logo-nav">
+          <img src="../../rapidride_logo.png" alt="RapidRide Logo" class="logo-icon" style="width: 32px; height: 32px;">
+          <span class="logo-text">RapidRide Driver</span>
+        </div>
+      </div>
+      <div class="nav-right">
+        <div class="online-status-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" id="onlineToggle">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="status-text" id="statusText">Offline</span>
+        </div>
+        <button class="nav-icon-btn" id="notificationBtn">
+          <span class="notification-badge" style="display: none;">0</span>
+          🔔
+        </button>
+        <div class="profile-dropdown">
+          <button class="profile-btn" id="profileBtn">
+            <div class="profile-avatar">D</div>
+            <span class="profile-name">Loading...</span>
+            <span class="dropdown-arrow">▼</span>
+          </button>
+          <div class="dropdown-menu" id="profileMenu">
+            <a href="#" class="dropdown-item" id="viewProfileBtn">
+              <span>👤</span> View Profile
+            </a>
+            <a href="#" class="dropdown-item" id="settingsBtn">
+              <span>⚙️</span> Settings
+            </a>
+            <a href="#" class="dropdown-item logout" id="logoutBtn">
+              <span>🚪</span> Logout
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN DASHBOARD -->
+  <div class="dashboard-wrapper">
+    
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar-left" id="sidebarLeft">
+      
+      <!-- SETUP INCOMPLETE CARD -->
+      <div class="card setup-card" id="setupCard" style="display: none;">
+        <h3 class="card-title">⚠️ Complete Your Setup</h3>
+        <p class="setup-message">Please complete your vehicle information to start accepting rides.</p>
+        <button class="btn-primary" id="completeSetupBtn">
+          <span>🚗</span> Complete Setup
+        </button>
+      </div>
+
+      <!-- EARNINGS CARD -->
+      <div class="card earnings-card">
+        <h3 class="card-title">Today's Earnings</h3>
+        <div class="earnings-display">
+          <div class="earnings-amount">
+            <span class="currency">₹</span>
+            <span class="amount" id="todayEarnings">0</span>
+          </div>
+          <div class="earnings-stats">
+            <div class="stat-item">
+              <span class="stat-label">Rides</span>
+              <span class="stat-value" id="todayRides">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Hours</span>
+              <span class="stat-value" id="onlineHours">0.0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Rating</span>
+              <span class="stat-value">⭐ <span id="driverRating">5.0</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WEEKLY SUMMARY -->
+      <div class="card weekly-card">
+        <h3 class="card-title">This Week</h3>
+        <div class="weekly-stats">
+          <div class="weekly-item">
+            <span class="weekly-icon">💰</span>
+            <div class="weekly-info">
+              <span class="weekly-label">Total Earned</span>
+              <span class="weekly-value" id="weeklyEarnings">₹0</span>
+            </div>
+          </div>
+          <div class="weekly-item">
+            <span class="weekly-icon">🚗</span>
+            <div class="weekly-info">
+              <span class="weekly-label">Total Rides</span>
+              <span class="weekly-value" id="weeklyRides">0</span>
+            </div>
+          </div>
+          <div class="weekly-item">
+            <span class="weekly-icon">⏱️</span>
+            <div class="weekly-info">
+              <span class="weekly-label">Online Time</span>
+              <span class="weekly-value" id="weeklyHours">0h</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUICK ACTIONS -->
+      <div class="card actions-card">
+        <h3 class="card-title">Quick Actions</h3>
+        <div class="action-buttons">
+          <button class="action-btn" id="viewEarningsBtn">
+            <span class="action-icon">📊</span>
+            <span class="action-label">Earnings Details</span>
+          </button>
+          <button class="action-btn" id="viewHistoryBtn">
+            <span class="action-icon">📜</span>
+            <span class="action-label">Ride History</span>
+          </button>
+          <button class="action-btn" id="supportBtn">
+            <span class="action-icon">💬</span>
+            <span class="action-label">Support</span>
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      
+      <!-- RIDE STATUS BAR -->
+      <div class="status-bar" id="statusBar" style="display: none;">
+        <div class="status-step active">
+          <div class="status-icon">📍</div>
+          <span class="status-label">Going to Pickup</span>
+        </div>
+        <div class="status-line"></div>
+        <div class="status-step">
+          <div class="status-icon">👥</div>
+          <span class="status-label">Pickup</span>
+        </div>
+        <div class="status-line"></div>
+        <div class="status-step">
+          <div class="status-icon">🛣️</div>
+          <span class="status-label">On Trip</span>
+        </div>
+        <div class="status-line"></div>
+        <div class="status-step">
+          <div class="status-icon">🏁</div>
+          <span class="status-label">Complete</span>
+        </div>
+      </div>
+
+      <!-- LIVE MAP SECTION -->
+      <div class="card map-card">
+        <div id="mapContainer" class="map-container" style="height:400px;width:100%;"></div>
+      </div>
+
+      <!-- CURRENT RIDE CARD -->
+      <div class="card current-ride-card" id="currentRideCard" style="display: none;">
+        <h3 class="card-title">Current Ride</h3>
+        <div class="ride-details">
+          <div class="rider-info">
+            <div class="rider-avatar" id="riderAvatar">R</div>
+            <div class="rider-text">
+              <p class="rider-name" id="riderName">No active ride</p>
+              <p class="rider-rating" id="riderRating">⭐ --</p>
+            </div>
+          </div>
+          <div class="ride-route">
+            <div class="route-point">
+              <span class="route-icon pickup">📍</span>
+              <div class="route-details">
+                <p class="route-label">Pickup</p>
+                <p class="route-address" id="pickupAddress">--</p>
+              </div>
+            </div>
+            <div class="route-line"></div>
+            <div class="route-point">
+              <span class="route-icon drop">🎯</span>
+              <div class="route-details">
+                <p class="route-label">Drop</p>
+                <p class="route-address" id="dropAddress">--</p>
+              </div>
+            </div>
+          </div>
+          <div class="ride-info-grid">
+            <div class="info-item">
+              <span class="info-label">Distance</span>
+              <span class="info-value" id="rideDistance">-- km</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Fare</span>
+              <span class="info-value" id="rideFare">₹--</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Type</span>
+              <span class="info-value" id="rideType">--</span>
+            </div>
+          </div>
+          <div class="ride-actions">
+            <button class="btn-primary" id="startRideBtn" style="display: none;">Start Ride</button>
+            <button class="btn-success" id="completeRideBtn" style="display: none;">Complete Ride</button>
+            <button class="btn-secondary" id="callRiderBtn">📞 Call Rider</button>
+            <button class="btn-cancel" id="cancelRideBtn">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- INCOMING RIDE REQUEST -->
+      <div class="card request-card" id="requestCard" style="display: none;">
+        <div class="request-header">
+          <h3 class="card-title">New Ride Request</h3>
+          <div class="request-timer" id="requestTimer">15s</div>
+        </div>
+        <div class="request-details">
+          <div class="request-info">
+            <div class="info-row">
+              <span class="info-icon">📍</span>
+              <div class="info-text">
+                <p class="info-label">Pickup</p>
+                <p class="info-value" id="requestPickup">--</p>
+              </div>
+            </div>
+            <div class="info-row">
+              <span class="info-icon">🎯</span>
+              <div class="info-text">
+                <p class="info-label">Drop</p>
+                <p class="info-value" id="requestDrop">--</p>
+              </div>
+            </div>
+            <div class="request-stats">
+              <div class="stat-box">
+                <span class="stat-label">Distance</span>
+                <span class="stat-value" id="requestDistance">-- km</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">Fare</span>
+                <span class="stat-value" id="requestFare">₹--</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">Rider</span>
+                <span class="stat-value">⭐ <span id="requestRiderRating">5.0</span></span>
+              </div>
+            </div>
+          </div>
+          <div class="request-actions">
+            <button class="btn-accept" id="sidebarAcceptRideBtn">✓ Accept</button>
+            <button class="btn-decline" id="sidebarDeclineRideBtn">✕ Decline</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="sidebar-right" id="sidebarRight">
+      
+      <!-- AVAILABILITY STATUS -->
+      <div class="card availability-card">
+        <h3 class="card-title">Availability</h3>
+        <div class="availability-content">
+          <div class="availability-status">
+            <div class="status-indicator" id="statusIndicator"></div>
+            <span class="status-message" id="statusMessage">You're Offline</span>
+          </div>
+          <p class="availability-tip">Turn on to start receiving ride requests</p>
+        </div>
+      </div>
+
+      <!-- PERFORMANCE METRICS -->
+      <div class="card metrics-card">
+        <h3 class="card-title">Performance</h3>
+        <div class="metrics-list">
+          <div class="metric-item">
+            <div class="metric-header">
+              <span class="metric-label">Acceptance Rate</span>
+              <span class="metric-value" id="acceptanceRate">--</span>
+            </div>
+            <div class="metric-bar">
+              <div class="metric-progress" id="acceptanceProgress" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-header">
+              <span class="metric-label">Completion Rate</span>
+              <span class="metric-value" id="completionRate">--</span>
+            </div>
+            <div class="metric-bar">
+              <div class="metric-progress" id="completionProgress" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-header">
+              <span class="metric-label">Rating</span>
+              <span class="metric-value" id="ratingValue">--</span>
+            </div>
+            <div class="metric-bar">
+              <div class="metric-progress" id="ratingProgress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NAVIGATION INSTRUCTIONS -->
+      <div class="card navigation-card" id="navigationCard" style="display: none;">
+        <h3 class="card-title">Navigation</h3>
+        <div class="navigation-content">
+          <div class="nav-instruction" id="navInstruction">
+            <div class="nav-icon">🧭</div>
+            <p class="nav-text">Waiting for navigation...</p>
+          </div>
+          <div class="nav-details">
+            <div class="nav-detail-item">
+              <span class="nav-label">Distance</span>
+              <span class="nav-value" id="navDistance">-- km</span>
+            </div>
+            <div class="nav-detail-item">
+              <span class="nav-label">ETA</span>
+              <span class="nav-value" id="navEta">-- min</span>
+            </div>
+          </div>
+          <button class="btn-secondary" id="openMapsBtn">Open in Maps</button>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- NOTIFICATIONS PANEL (Slide-out) -->
+  <div class="notification-panel" id="notificationPanel">
+    <div class="panel-header">
+      <h3>Notifications</h3>
+      <button class="close-btn" id="closeNotificationBtn">✕</button>
+    </div>
+    <div class="notification-list" id="notificationList">
+      <p class="empty-state" style="text-align: center; color: #999; padding: 20px;">No notifications</p>
+    </div>
+  </div>
+
+  <!-- EMERGENCY SOS BUTTON -->
+  <button class="sos-button" id="sosButton">
+    <span class="sos-icon">🆘</span>
+  </button>
+
+  <!-- SOS CONFIRMATION MODAL -->
+  <div class="modal" id="sosModal">
+    <div class="modal-content emergency-modal">
+      <h3>🆘 Emergency SOS</h3>
+      <p>Are you sure you want to trigger an emergency alert?</p>
+      <p class="modal-subtext">This will notify emergency contacts and authorities.</p>
+      <div class="modal-actions">
+        <button class="btn-danger" id="confirmSosBtn">Confirm SOS</button>
+        <button class="btn-secondary" id="cancelSosBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EARNINGS DETAILS MODAL -->
+  <div class="modal" id="earningsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Earnings Details</h3>
+        <button class="close-btn" id="closeEarningsModalBtn">✕</button>
+      </div>
+      <div class="earnings-breakdown">
+        <div class="breakdown-item">
+          <span class="breakdown-label">Total Fare</span>
+          <span class="breakdown-value">₹<span id="totalFare">0</span></span>
+        </div>
+        <div class="breakdown-item">
+          <span class="breakdown-label">Platform Fee</span>
+          <span class="breakdown-value text-danger">-₹<span id="platformFee">0</span></span>
+        </div>
+        <div class="breakdown-item">
+          <span class="breakdown-label">Tips</span>
+          <span class="breakdown-value text-success">+₹<span id="tips">0</span></span>
+        </div>
+        <div class="breakdown-divider"></div>
+        <div class="breakdown-item total">
+          <span class="breakdown-label">Net Earnings</span>
+          <span class="breakdown-value">₹<span id="netEarnings">0</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUPPORT MODAL -->
+  <div class="modal" id="supportModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Driver Support</h3>
+        <button class="close-btn" id="closeSupportModalBtn">✕</button>
+      </div>
+      <div style="padding: 20px;">
+        <h4 style="margin: 0 0 15px 0; color: #2E4053;">📞 Support Hotline</h4>
+        <div style="margin-bottom: 20px;">
+          <p style="margin: 5px 0; color: #555;"><strong>Driver Support:</strong> +91 1800-DRIVER-1</p>
+          <p style="margin: 5px 0; color: #555;"><strong>Emergency:</strong> +91 1800-765-4321</p>
+        </div>
+        
+        <h4 style="margin: 20px 0 15px 0; color: #2E4053;">📧 Email Support</h4>
+        <div style="margin-bottom: 20px;">
+          <p style="margin: 5px 0; color: #555;"><strong>General:</strong> driversupport@rapidride.com</p>
+          <p style="margin: 5px 0; color: #555;"><strong>Safety:</strong> safety@rapidride.com</p>
+        </div>
+        
+        <p style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 8px; color: #666; font-size: 14px;">
+          💡 Our driver support team is available 24/7 to assist you.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-content settings-modal">
+      <div class="modal-header">
+        <h3>Settings</h3>
+        <button class="close-btn" id="closeSettingsModalBtn">✕</button>
+      </div>
+
+      <div class="settings-section">
+        <h4>Map Style</h4>
+        <div class="settings-buttons">
+          <button class="btn-secondary" data-map-style="light">Light</button>
+          <button class="btn-secondary" data-map-style="dark">Dark</button>
+          <button class="btn-secondary" data-map-style="terrain">Terrain</button>
+          <button class="btn-secondary" data-map-style="satellite">Satellite</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Theme</h4>
+        <div class="settings-buttons">
+          <button class="btn-secondary" data-theme="light">Light</button>
+          <button class="btn-secondary" data-theme="dark">Dark</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VEHICLE SETUP MODAL -->
+  <div class="modal" id="vehicleSetupModal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3>🚗 Complete Vehicle Setup</h3>
+        <button class="close-btn" id="closeVehicleSetupBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 20px; color: #666;">Please provide your vehicle details to start accepting rides.</p>
+        
+        <div class="form-group">
+          <label for="vehicleType">Vehicle Type *</label>
+          <select id="vehicleType" class="input-field" required>
+            <option value="">Select Vehicle Type</option>
+            <option value="sedan">Sedan</option>
+            <option value="suv">SUV</option>
+            <option value="hatchback">Hatchback</option>
+            <option value="auto">Auto Rickshaw</option>
+            <option value="bike">Bike</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="vehicleMake">Vehicle Make *</label>
+          <input type="text" id="vehicleMake" class="input-field" placeholder="e.g., Maruti, Hyundai, Honda" required>
+        </div>
+
+        <div class="form-group">
+          <label for="vehicleModel">Vehicle Model *</label>
+          <input type="text" id="vehicleModel" class="input-field" placeholder="e.g., Swift, Creta, City" required>
+        </div>
+
+        <div class="form-group">
+          <label for="vehicleNumber">Vehicle Registration Number *</label>
+          <input type="text" id="vehicleNumber" class="input-field" placeholder="e.g., KA01AB1234" required style="text-transform: uppercase;">
+        </div>
+
+        <div class="form-group">
+          <label for="vehicleColor">Vehicle Color *</label>
+          <input type="text" id="vehicleColor" class="input-field" placeholder="e.g., White, Black, Silver" required>
+        </div>
+
+        <div class="form-group">
+          <label for="vehicleYear">Year of Manufacture *</label>
+          <input type="number" id="vehicleYear" class="input-field" placeholder="e.g., 2020" min="1990" max="2025" required>
+        </div>
+
+        <div class="form-group">
+          <label for="licenseNumber">Driving License Number *</label>
+          <input type="text" id="licenseNumber" class="input-field" placeholder="e.g., KA0120200012345" required style="text-transform: uppercase;">
+        </div>
+
+        <div class="form-group">
+          <label for="insuranceNumber">Insurance Policy Number *</label>
+          <input type="text" id="insuranceNumber" class="input-field" placeholder="Enter insurance policy number" required>
+        </div>
+
+        <button class="btn-primary" id="submitVehicleSetupBtn" style="width: 100%; margin-top: 10px;">
+          <span>✓</span> Complete Setup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGOUT CONFIRMATION MODAL -->
+  <div class="modal" id="logoutModal">
+    <div class="modal-content" style="max-width: 400px;">
+      <h3 style="margin: 0 0 15px 0; color: #2E4053;">Confirm Logout</h3>
+      <p style="margin: 0 0 20px 0; color: #666;">Are you sure you want to logout?</p>
+      <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="btn-secondary" id="cancelLogoutBtn">Cancel</button>
+        <button class="btn-primary" id="confirmLogoutBtn" style="background: #e74c3c;">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIDE REQUEST MODAL -->
+  <div class="modal" id="rideRequestModal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px; animation: slideDown 0.3s ease;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0;">
+        <h2 style="margin: 0; font-size: 24px;">🚗 New Ride Request!</h2>
+        <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 14px;">Accept to start earning</p>
+      </div>
+      
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+          <div style="width: 40px; height: 40px; background: #667eea; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+            👤
+          </div>
+          <div>
+            <div style="font-weight: 600; color: #2c3e50;" id="rideRequestRiderName">Loading...</div>
+            <div style="font-size: 13px; color: #7f8c8d;" id="rideRequestRiderPhone">+91 XXXXXXXXXX</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 15px;">
+        <div style="display: flex; align-items: start; gap: 12px; margin-bottom: 15px; padding: 12px; background: #e8f5e9; border-radius: 8px;">
+          <div style="font-size: 24px;">📍</div>
+          <div style="flex: 1;">
+            <div style="font-size: 12px; color: #27ae60; font-weight: 600; margin-bottom: 4px;">PICKUP</div>
+            <div style="color: #2c3e50; font-weight: 500;" id="rideRequestPickup">Loading...</div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: start; gap: 12px; padding: 12px; background: #ffebee; border-radius: 8px;">
+          <div style="font-size: 24px;">🎯</div>
+          <div style="flex: 1;">
+            <div style="font-size: 12px; color: #e74c3c; font-weight: 600; margin-bottom: 4px;">DROP-OFF</div>
+            <div style="color: #2c3e50; font-weight: 500;" id="rideRequestDrop">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <div style="flex: 1; background: #f8f9fa; padding: 12px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 12px; color: #7f8c8d; margin-bottom: 4px;">RIDE TYPE</div>
+          <div style="font-weight: 600; color: #2c3e50; text-transform: capitalize;" id="rideRequestType">Economy</div>
+        </div>
+        <div style="flex: 1; background: #f8f9fa; padding: 12px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 12px; color: #7f8c8d; margin-bottom: 4px;">TIME</div>
+          <div style="font-weight: 600; color: #2c3e50;" id="rideRequestTime">Just now</div>
+        </div>
+      </div>
+
+      <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+        <div style="font-size: 20px;">⏰</div>
+        <div style="flex: 1; font-size: 14px; color: #856404;">
+          Request expires in <strong><span id="rideRequestTimer">30</span>s</strong>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="display: flex; gap: 12px;">
+        <button class="btn-secondary" id="rejectRideBtn" style="flex: 1; padding: 14px; font-size: 16px; font-weight: 600;">
+          ❌ Reject
+        </button>
+        <button class="btn-primary" id="acceptRideBtn" style="flex: 1; padding: 14px; font-size: 16px; font-weight: 600; background: linear-gradient(135deg, #27ae60 0%, #229954 100%);">
+          ✅ Accept Ride
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-App Notification Toast -->
+  <div id="driverNotificationToast" style="display: none; position: fixed; top: 80px; right: 20px; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; min-width: 300px; animation: slideInRight 0.3s ease;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div id="notificationIcon" style="font-size: 24px;">ℹ️</div>
+      <div style="flex: 1;">
+        <div id="notificationMessage" style="color: #2c3e50; font-weight: 500;">Notification message</div>
+      </div>
+      <button onclick="this.parentElement.parentElement.style.display='none'" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #95a5a6;">×</button>
+    </div>
+  </div>
+
+  <style>
+    @keyframes slideDown {
+      from {
+        transform: translateY(-50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideInRight {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    #rideRequestModal .modal-content {
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+  </style>
+
+  <!-- Scripts -->
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script type="module" src="../assets/js/socket.js"></script>
+  <script type="module" src="../assets/js/dashboard.js"></script>
+</body>
+</html>

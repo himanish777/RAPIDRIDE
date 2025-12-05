@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RapidRide - Live Tracking</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="../assets/css/map.css">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-content">
+      <div class="navbar-brand">
+        <img src="../../rapidride_logo.png" alt="RapidRide" class="logo">
+        <span>RapidRide</span>
+      </div>
+      <button id="backBtn" class="btn-back">← Back to Dashboard</button>
+    </div>
+  </nav>
+
+  <!-- Map Container -->
+  <div id="map"></div>
+
+  <!-- Floating Info Card -->
+  <div class="info-card" id="infoCard">
+    <div class="info-header">
+      <h3>🚗 Trip Information</h3>
+      <button id="minimizeBtn" class="btn-minimize">−</button>
+    </div>
+    <div class="info-content" id="infoContent">
+      <div class="info-row">
+        <span class="info-label">📍 Distance:</span>
+        <span class="info-value" id="distanceValue">Calculating...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">⏱️ Est. Time:</span>
+        <span class="info-value" id="timeValue">Calculating...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">🚦 Traffic:</span>
+        <span class="info-value" id="trafficValue">
+          <span class="traffic-indicator" id="trafficIndicator">●</span>
+          <span id="trafficText">Loading...</span>
+        </span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Driver Info Card -->
+  <div class="driver-card" id="driverCard">
+    <div class="driver-avatar" id="driverAvatar">RK</div>
+    <div class="driver-details">
+      <h4 id="driverName">Rajesh Kumar</h4>
+      <p id="driverVehicle">⭐ 4.8 • Honda City • KA-01-AB-1234</p>
+    </div>
+    <button class="btn-call" id="callDriverBtn">📞 Call</button>
+  </div>
+
+  <!-- Error Toast -->
+  <div class="error-toast" id="errorToast">
+    <span id="errorMessage"></span>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <p>Loading map...</p>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Custom JS -->
+  <script type="module" src="../assets/js/map.js"></script>
+</body>
+</html>

@@ -1,11 +1,20 @@
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
+// import { connectRedis } from "./config/redis.js";
 import app from "./app.js";
 import http from 'http';
 import { Server } from 'socket.io';
+// import logger from './config/logger.js';
+// import { register } from './config/metrics.js';
+import { setSocketInstance } from './config/socketHelper.js';
 
 dotenv.config();
 connectDB();
+
+// Connect to Redis
+// (async () => {
+//   await connectRedis();
+// })();
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -15,14 +24,51 @@ const io = new Server(server, {
   }
 });
 
+// Set socket instance for use in services
+setSocketInstance(io);
+
+// Expose Prometheus metrics endpoint
+// app.get('/metrics', async (req, res) => {
+//   try {
+//     res.set('Content-Type', register.contentType);
+//     res.end(await register.metrics());
+//   } catch (error) {
+//     res.status(500).end(error);
+//   }
+// });
+
 io.on('connection', (socket) => {
-  console.log('Socket connected:', socket.id);
+  // logger.info('Socket connected', { socketId: socket.id });
+
+  socket.on('admin:subscribe', () => {
+    socket.join('admin_room');
+    // logger.info('Socket joined admin room', { socketId: socket.id });
+  });
+
+  // Driver subscribes to receive ride requests
+  socket.on('driver:subscribe', (data) => {
+    if (data && data.driverId) {
+      socket.driverId = data.driverId; // Store driverId on socket
+      socket.join('available_drivers'); // Join room for available drivers
+      socket.join(`driver_${data.driverId}`); // Join personal driver room
+      console.log(`✅ Driver ${data.driverId} subscribed for ride requests`);
+    }
+  });
+
+  // Driver goes offline
+  socket.on('driver:unsubscribe', (data) => {
+    if (data && data.driverId) {
+      socket.leave('available_drivers');
+      socket.leave(`driver_${data.driverId}`);
+      console.log(`❌ Driver ${data.driverId} unsubscribed from ride requests`);
+    }
+  });
 
   socket.on('subscribe_ride', (data) => {
     if (data && data.rideId) {
       const room = `ride_${data.rideId}`;
       socket.join(room);
-      console.log(`Socket ${socket.id} joined ${room}`);
+      // logger.info('Socket joined ride room', { socketId: socket.id, room });
     }
   });
 
@@ -30,7 +76,7 @@ io.on('connection', (socket) => {
     if (data && data.rideId) {
       const room = `ride_${data.rideId}`;
       socket.leave(room);
-      console.log(`Socket ${socket.id} left ${room}`);
+      // logger.info('Socket left ride room', { socketId: socket.id, room });
     }
   });
 
@@ -41,23 +87,31 @@ io.on('connection', (socket) => {
       if (rideId) {
         const room = `ride_${rideId}`;
         io.to(room).emit('driver_location_update', { lng, lat });
-        console.log(`Emitted driver_location_update to ${room}`, { lng, lat });
+        // logger.debug('Driver location update emitted', { room, lng, lat });
       } else {
         // broadcast as fallback
         io.emit('driver_location_update', { lng: data.lng, lat: data.lat });
-        console.log('Broadcasted driver_location_update', data);
+        // logger.debug('Driver location broadcasted', { lng: data.lng, lat: data.lat });
       }
     } catch (err) {
-      console.error('Error handling driver:updateLocation', err);
+      // logger.error('Error handling driver location update', { error: err.message });
     }
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('Socket disconnected:', socket.id, reason);
+    // logger.info('Socket disconnected', { socketId: socket.id, reason });
+    if (socket.driverId) {
+      console.log(`❌ Driver ${socket.driverId} disconnected`);
+    }
   });
 });
 
 const PORT = process.env.PORT || 5500;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log('Server running on http://localhost:' + PORT);
+  console.log(`✅ Server running on port ${PORT}`);
+  // logger.info(`RapidRide server started on port ${PORT}`);
+  // logger.info(`Metrics available at http://localhost:${PORT}/metrics`);
 });
+
+// Export io for use in services
+export { io };

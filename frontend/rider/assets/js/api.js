@@ -42,11 +42,11 @@ export class API {
 
   // ===== USER ENDPOINTS =====
   async getUserProfile() {
-    return this.request('/user/profile');
+    return this.request('/rider/profile');
   }
 
   async updateProfile(profileData) {
-    return this.request('/user/profile', {
+    return this.request('/rider/profile', {
       method: 'PUT',
       body: JSON.stringify(profileData)
     });
@@ -54,32 +54,32 @@ export class API {
 
   // ===== RIDE ENDPOINTS =====
   async requestRide(rideData) {
-    return this.request('/rides/request', {
+    return this.request('/rider/rides/request', {
       method: 'POST',
       body: JSON.stringify(rideData)
     });
   }
 
   async cancelRide(rideId) {
-    return this.request(`/rides/${rideId}/cancel`, {
+    return this.request(`/rider/rides/${rideId}/cancel`, {
       method: 'POST'
     });
   }
 
   async getRideHistory(page = 1, limit = 10) {
-    return this.request(`/rides/history?page=${page}&limit=${limit}`);
+    return this.request(`/rider/rides/history?page=${page}&limit=${limit}`);
   }
 
   async getRideDetails(rideId) {
-    return this.request(`/rides/${rideId}`);
+    return this.request(`/rider/rides/${rideId}`);
   }
 
   async getCurrentRide() {
-    return this.request('/rides/current');
+    return this.request('/rider/rides/current');
   }
 
   async rateRide(rideId, rating, feedback) {
-    return this.request(`/rides/${rideId}/rate`, {
+    return this.request(`/rider/rides/${rideId}/rate`, {
       method: 'POST',
       body: JSON.stringify({ rating, feedback })
     });
@@ -87,7 +87,7 @@ export class API {
 
   // ===== FARE ESTIMATION =====
   async estimateFare(pickup, drop, rideType) {
-    return this.request('/rides/estimate-fare', {
+    return this.request('/rider/rides/estimate-fare', {
       method: 'POST',
       body: JSON.stringify({ pickup, drop, rideType })
     });
@@ -95,77 +95,77 @@ export class API {
 
   // ===== PRE-BOOKING ENDPOINTS =====
   async scheduleRide(scheduleData) {
-    return this.request('/rides/schedule', {
+    return this.request('/rider/rides/schedule', {
       method: 'POST',
       body: JSON.stringify(scheduleData)
     });
   }
 
   async getScheduledRides() {
-    return this.request('/rides/scheduled');
+    return this.request('/rider/rides/scheduled');
   }
 
   async cancelScheduledRide(scheduleId) {
-    return this.request(`/rides/scheduled/${scheduleId}/cancel`, {
+    return this.request(`/rider/rides/scheduled/${scheduleId}/cancel`, {
       method: 'POST'
     });
   }
 
   // ===== REWARDS & COUPONS =====
   async getRewardPoints() {
-    return this.request('/rewards/points');
+    return this.request('/rider/rewards/points');
   }
 
   async applyCoupon(couponCode) {
-    return this.request('/coupons/apply', {
+    return this.request('/rider/coupons/apply', {
       method: 'POST',
       body: JSON.stringify({ code: couponCode })
     });
   }
 
   async getAvailableCoupons() {
-    return this.request('/coupons/available');
+    return this.request('/rider/coupons/available');
   }
 
   // ===== NOTIFICATIONS =====
   async getNotifications(page = 1) {
-    return this.request(`/notifications?page=${page}`);
+    return this.request(`/rider/notifications?page=${page}`);
   }
 
   async markNotificationRead(notificationId) {
-    return this.request(`/notifications/${notificationId}/read`, {
+    return this.request(`/rider/notifications/${notificationId}/read`, {
       method: 'PUT'
     });
   }
 
   async markAllNotificationsRead() {
-    return this.request('/notifications/read-all', {
+    return this.request('/rider/notifications/read-all', {
       method: 'PUT'
     });
   }
 
   // ===== SUPPORT =====
   async submitSupportRequest(issueData) {
-    return this.request('/support/request', {
+    return this.request('/rider/support/request', {
       method: 'POST',
       body: JSON.stringify(issueData)
     });
   }
 
   async getSupportTickets() {
-    return this.request('/support/tickets');
+    return this.request('/rider/support/tickets');
   }
 
   // ===== EMERGENCY =====
   async triggerSOS(location) {
-    return this.request('/emergency/sos', {
+    return this.request('/rider/emergency/sos', {
       method: 'POST',
       body: JSON.stringify({ location })
     });
   }
 
   async addEmergencyContact(contact) {
-    return this.request('/emergency/contacts', {
+    return this.request('/rider/emergency/contacts', {
       method: 'POST',
       body: JSON.stringify(contact)
     });
@@ -173,20 +173,20 @@ export class API {
 
   // ===== ANALYTICS =====
   async getRideAnalytics() {
-    return this.request('/analytics/rides');
+    return this.request('/rider/analytics/rides');
   }
 
   async getSpendingAnalytics(period = 'month') {
-    return this.request(`/analytics/spending?period=${period}`);
+    return this.request(`/rider/analytics/spending?period=${period}`);
   }
 
   // ===== PAYMENT =====
   async getPaymentMethods() {
-    return this.request('/payments/methods');
+    return this.request('/rider/payments/methods');
   }
 
   async addPaymentMethod(paymentData) {
-    return this.request('/payments/methods', {
+    return this.request('/rider/payments/methods', {
       method: 'POST',
       body: JSON.stringify(paymentData)
     });
@@ -194,7 +194,7 @@ export class API {
 
   async downloadInvoice(rideId) {
     // Returns blob for PDF download
-    const response = await fetch(`${this.baseURL}/rides/${rideId}/invoice`, {
+    const response = await fetch(`${this.baseURL}/rider/rides/${rideId}/invoice`, {
       headers: this.getHeaders()
     });
     

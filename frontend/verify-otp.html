@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RapidRide - Verify OTP</title>
+  <link rel="icon" type="image/png" href="rapidride_logo.png">
+  <link rel="stylesheet" href="login.css">
+</head>
+<body>
+  <div class="layout-wrapper">
+    <!-- Left side: Background image -->
+    <div class="image-section"></div>
+    
+    <!-- Right side: Full teal panel with centered card -->
+    <div class="teal-panel">
+      <div class="form-container">
+        <div class="logo-line">
+          <img src="rapidride_logo.png" class="app-logo" alt="RapidRide Logo">
+          <div class="title-text">
+            <h1>RAPIDRIDE</h1>
+            <p>Enter verification code</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>OTP Code</label>
+          <input id="otp" type="text" placeholder="Enter 6-digit OTP" maxlength="6">
+          <small style="color: #5A6B7A; font-size: 12px; margin-top: 8px; display: block;">Check your email for the OTP code</small>
+        </div>
+
+        <button class="btn-primary" onclick="verifyOTP()">Verify OTP</button>
+
+        <div class="form-footer">
+          <p>Didn't receive? <a href="#" onclick="resendOTP(); return false;">Resend OTP</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = 'http://localhost:5500';
+    const email = sessionStorage.getItem('reset_email');
+
+    // Redirect if no email in session
+    if (!email) {
+      window.location.href = 'forgot-password.html';
+    }
+
+    async function verifyOTP() {
+      const otp = document.getElementById('otp').value.trim();
+
+      if (!otp || otp.length !== 6) {
+        alert('Please enter a valid 6-digit OTP');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, otp })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('OTP verified successfully!');
+          sessionStorage.setItem('reset_token', data.token);
+          window.location.href = 'reset-password.html';
+        } else {
+          alert(data.message || 'Invalid OTP');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+      }
+    }
+
+    async function resendOTP() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('OTP resent to your email!');
+        } else {
+          alert(data.message || 'Failed to resend OTP');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+      }
+    }
+  </script>
+</body>
+</html>

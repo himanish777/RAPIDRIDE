@@ -10,19 +10,19 @@ export class RideManager {
   // Start a new ride
   startRide(rideData) {
     this.currentRide = {
-      id: rideData.id,
-      pickup: rideData.pickup,
-      drop: rideData.drop,
-      rideType: rideData.rideType,
+      id: rideData._id || rideData.id, // Support both _id (MongoDB) and id
+      pickup: rideData.pickupLocation?.address || rideData.pickup,
+      drop: rideData.dropoffLocation?.address || rideData.drop,
+      rideType: rideData.type || rideData.rideType,
       fare: rideData.fare,
       driver: rideData.driver || null,
-      status: 'searching',
-      requestedAt: new Date(),
-      startedAt: null,
-      completedAt: null
+      status: rideData.status || 'searching',
+      requestedAt: new Date(rideData.createdAt || Date.now()),
+      startedAt: rideData.startedAt ? new Date(rideData.startedAt) : null,
+      completedAt: rideData.completedAt ? new Date(rideData.completedAt) : null
     };
 
-    this.updateStatus('searching');
+    this.updateStatus(this.currentRide.status);
     console.log('🚕 Ride started:', this.currentRide);
   }
 

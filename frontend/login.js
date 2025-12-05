@@ -33,7 +33,15 @@ async function login() {
     if (data.success) {
       localStorage.setItem("token", data.token);
       alert("Login successful!");
-      window.location.href = `${location.origin}/rider/pages/dashboard.html`; // Changed to use absolute origin-based path
+      
+      // Redirect based on user role
+      if (data.user && data.user.role === 'admin') {
+        window.location.href = `${location.origin}/admin/pages/dashboard.html`;
+      } else if (data.user && data.user.role === 'driver') {
+        window.location.href = `${location.origin}/driver/pages/dashboard.html`;
+      } else {
+        window.location.href = `${location.origin}/rider/pages/dashboard.html`;
+      }
     } else {
       alert(data.message || "Login failed");
     }

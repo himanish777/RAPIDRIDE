@@ -1,4 +1,5 @@
 import * as riderService from "../services/riderService.js";
+import logger from '../config/logger.js';
 
 // ===== USER PROFILE CONTROLLERS =====
 export const getUserProfile = async (req, res) => {
@@ -9,7 +10,7 @@ export const getUserProfile = async (req, res) => {
     }
     return res.json(result);
   } catch (err) {
-    console.error('getUserProfile error:', err);
+    logger.error('getUserProfile error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -19,7 +20,7 @@ export const updateUserProfile = async (req, res) => {
     const result = await riderService.updateUserProfileService(req.user.userId, req.body);
     return res.json(result);
   } catch (err) {
-    console.error('updateUserProfile error:', err);
+    logger.error('updateUserProfile error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -33,7 +34,7 @@ export const requestRide = async (req, res) => {
     }
     return res.status(201).json(result);
   } catch (err) {
-    console.error('requestRide error:', err);
+    logger.error('requestRide error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -43,7 +44,7 @@ export const getCurrentRide = async (req, res) => {
     const result = await riderService.getCurrentRideService(req.user.userId);
     return res.json(result);
   } catch (err) {
-    console.error('getCurrentRide error:', err);
+    logger.error('getCurrentRide error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -57,7 +58,7 @@ export const getRideDetails = async (req, res) => {
     }
     return res.json(result);
   } catch (err) {
-    console.error('getRideDetails error:', err);
+    logger.error('getRideDetails error', { error: err.message, userId: req.user.userId, rideId: req.params.id });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -72,7 +73,7 @@ export const cancelRide = async (req, res) => {
     }
     return res.json(result);
   } catch (err) {
-    console.error('cancelRide error:', err);
+    logger.error('cancelRide error', { error: err.message, userId: req.user.userId, rideId: req.params.id });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -84,7 +85,7 @@ export const getRideHistory = async (req, res) => {
     const result = await riderService.getRideHistoryService(req.user.userId, page, limit);
     return res.json(result);
   } catch (err) {
-    console.error('getRideHistory error:', err);
+    logger.error('getRideHistory error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -94,7 +95,7 @@ export const estimateFare = async (req, res) => {
     const result = await riderService.estimateFareService(req.body);
     return res.json(result);
   } catch (err) {
-    console.error('estimateFare error:', err);
+    logger.error('estimateFare error', { error: err.message });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -107,7 +108,7 @@ export const scheduleRide = async (req, res) => {
     }
     return res.status(201).json(result);
   } catch (err) {
-    console.error('scheduleRide error:', err);
+    logger.error('scheduleRide error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -117,7 +118,7 @@ export const getScheduledRides = async (req, res) => {
     const result = await riderService.getScheduledRidesService(req.user.userId);
     return res.json(result);
   } catch (err) {
-    console.error('getScheduledRides error:', err);
+    logger.error('getScheduledRides error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -128,7 +129,7 @@ export const getRewardPoints = async (req, res) => {
     const result = await riderService.getRewardPointsService(req.user.userId);
     return res.json(result);
   } catch (err) {
-    console.error('getRewardPoints error:', err);
+    logger.error('getRewardPoints error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -141,7 +142,7 @@ export const applyCoupon = async (req, res) => {
     }
     return res.json(result);
   } catch (err) {
-    console.error('applyCoupon error:', err);
+    logger.error('applyCoupon error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -152,7 +153,7 @@ export const getNotifications = async (req, res) => {
     const result = await riderService.getNotificationsService(req.user.userId);
     return res.json(result);
   } catch (err) {
-    console.error('getNotifications error:', err);
+    logger.error('getNotifications error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -162,7 +163,7 @@ export const markNotificationRead = async (req, res) => {
     const result = await riderService.markNotificationReadService(req.user.userId, req.params.id);
     return res.json(result);
   } catch (err) {
-    console.error('markNotificationRead error:', err);
+    logger.error('markNotificationRead error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -173,7 +174,7 @@ export const submitSupportRequest = async (req, res) => {
     const result = await riderService.submitSupportRequestService(req.user.userId, req.body);
     return res.status(201).json(result);
   } catch (err) {
-    console.error('submitSupportRequest error:', err);
+    logger.error('submitSupportRequest error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -184,7 +185,7 @@ export const triggerSOS = async (req, res) => {
     const result = await riderService.triggerSOSService(req.user.userId, req.body.location);
     return res.json(result);
   } catch (err) {
-    console.error('triggerSOS error:', err);
+    logger.error('triggerSOS error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -195,7 +196,7 @@ export const getRideAnalytics = async (req, res) => {
     const result = await riderService.getRideAnalyticsService(req.user.userId);
     return res.json(result);
   } catch (err) {
-    console.error('getRideAnalytics error:', err);
+    logger.error('getRideAnalytics error', { error: err.message, userId: req.user.userId });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -210,7 +211,7 @@ export const getInvoice = async (req, res) => {
     }
     return res.json(result);
   } catch (err) {
-    console.error('getInvoice error:', err);
+    logger.error('getInvoice error', { error: err.message, userId: req.user.userId, rideId: req.params.id });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };

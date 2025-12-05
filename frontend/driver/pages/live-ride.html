@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RapidRide Driver - Active Ride</title>
+  <link rel="stylesheet" href="../assets/css/live-ride.css">
+  
+  <!-- Leaflet (OpenStreetMap) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+  <!-- Top Header -->
+  <header class="live-header">
+    <button class="back-btn" id="backBtn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="header-title">
+      <h1 id="rideStatus">Active Ride</h1>
+      <p id="rideSubStatus">Heading to pickup</p>
+    </div>
+    <button class="menu-btn" id="menuBtn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="5" r="1.5" fill="currentColor"/>
+        <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+        <circle cx="12" cy="19" r="1.5" fill="currentColor"/>
+      </svg>
+    </button>
+  </header>
+
+  <!-- Main Map Container -->
+  <div id="map" class="map-container"></div>
+
+  <!-- My Location Button -->
+  <button class="my-location-btn" id="myLocationBtn" title="Center on my location">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="3" fill="currentColor"/>
+      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <!-- Navigation Info Card -->
+  <div class="floating-info-card" id="navigationCard">
+    <div class="info-card-header">
+      <h3>🧭 Navigation</h3>
+      <button id="minimizeNavBtn" class="minimize-btn">−</button>
+    </div>
+    <div class="info-card-content" id="navCardContent">
+      <div class="nav-destination">
+        <div class="nav-icon">📍</div>
+        <div class="nav-details">
+          <div class="nav-label">Next Stop</div>
+          <div class="nav-address" id="nextStopAddress">Loading...</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Distance:</span>
+        <span class="info-value" id="distanceValue">Calculating...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Est. Time:</span>
+        <span class="info-value" id="timeValue">Calculating...</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Ride Info Panel -->
+  <div class="ride-info-panel" id="rideInfoPanel">
+    
+    <!-- Rider Info -->
+    <div class="rider-section" id="riderSection">
+      <div class="rider-info">
+        <div class="rider-avatar" id="riderAvatar">
+          <span id="riderInitials">R</span>
+        </div>
+        <div class="rider-details">
+          <h3 id="riderName">Rider Name</h3>
+          <div class="rider-meta">
+            <span class="rating">⭐ <span id="riderRating">4.8</span></span>
+            <span class="phone-info" id="riderPhone">+91 XXXXX XXXXX</span>
+          </div>
+        </div>
+        <div class="rider-actions">
+          <button class="action-btn call-btn" id="callRiderBtn" title="Call Rider">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button class="action-btn message-btn" id="messageRiderBtn" title="Message Rider">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trip Details -->
+    <div class="trip-details">
+      <div class="location-item pickup-location">
+        <div class="location-icon">📍</div>
+        <div class="location-info">
+          <div class="location-label">Pickup Location</div>
+          <div class="location-address" id="pickupAddress">Loading...</div>
+        </div>
+      </div>
+      
+      <div class="route-line"></div>
+      
+      <div class="location-item drop-location">
+        <div class="location-icon">🎯</div>
+        <div class="location-info">
+          <div class="location-label">Drop Location</div>
+          <div class="location-address" id="dropAddress">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fare Info -->
+    <div class="fare-section">
+      <div class="fare-item">
+        <span class="fare-label">Trip Type</span>
+        <span class="fare-value" id="tripType">Economy</span>
+      </div>
+      <div class="fare-item">
+        <span class="fare-label">Distance</span>
+        <span class="fare-value" id="tripDistance">0 km</span>
+      </div>
+      <div class="fare-item">
+        <span class="fare-label">Estimated Fare</span>
+        <span class="fare-value fare-amount" id="fareAmount">₹0</span>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons" id="actionButtons">
+      <!-- Arriving Button (when heading to pickup) -->
+      <button class="primary-action-btn" id="arrivedAtPickupBtn" style="display: none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Arrived at Pickup</span>
+      </button>
+
+      <!-- Start Trip Button (when at pickup) -->
+      <button class="primary-action-btn" id="startTripBtn" style="display: none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <polygon points="5 3 19 12 5 21 5 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="currentColor"/>
+        </svg>
+        <span>Start Trip</span>
+      </button>
+
+      <!-- Complete Trip Button (when on trip) -->
+      <button class="primary-action-btn complete-btn" id="completeTripBtn" style="display: none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Complete Trip</span>
+      </button>
+
+      <!-- Cancel Trip Button -->
+      <button class="secondary-action-btn" id="cancelTripBtn">
+        <span>Cancel Trip</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Trip Completion Modal -->
+  <div class="modal" id="completionModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🎉 Trip Completed!</h2>
+      </div>
+      <div class="modal-body">
+        <div class="completion-summary">
+          <div class="summary-item">
+            <span class="summary-label">Distance Traveled</span>
+            <span class="summary-value" id="finalDistance">0 km</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Trip Duration</span>
+            <span class="summary-value" id="finalDuration">0 min</span>
+          </div>
+          <div class="summary-item highlight">
+            <span class="summary-label">Total Fare</span>
+            <span class="summary-value fare-highlight" id="finalFare">₹0</span>
+          </div>
+        </div>
+        <div class="earnings-info">
+          <div class="earnings-label">Your Earnings</div>
+          <div class="earnings-amount" id="driverEarnings">₹0</div>
+          <div class="earnings-note">Commission deducted</div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="backToDashboardBtn">Back to Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancel Confirmation Modal -->
+  <div class="modal" id="cancelModal" style="display: none;">
+    <div class="modal-content">
+      <h3 style="margin: 0 0 15px 0; color: #2E4053;">Cancel Trip?</h3>
+      <p style="margin: 0 0 20px 0; color: #666;">Are you sure you want to cancel this trip? This may affect your ratings.</p>
+      <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="btn-secondary" id="cancelCancelBtn">No, Continue Trip</button>
+        <button class="btn-danger" id="confirmCancelBtn">Yes, Cancel Trip</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="../assets/js/socket.js"></script>
+  <script type="module" src="../assets/js/live-ride.js"></script>
+</body>
+</html>

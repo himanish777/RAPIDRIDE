@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RapidRide - Rider Dashboard</title>
+  <link rel="icon" type="image/png" href="../../rapidride_logo.png">
   <link rel="stylesheet" href="../assets/css/dashboard.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Leaflet (OpenStreetMap) - free map -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -30,7 +30,7 @@
     <div class="nav-container">
       <div class="nav-left">
         <div class="logo-nav">
-          <span class="logo-icon">🚗</span>
+          <img src="../../rapidride_logo.png" alt="RapidRide Logo" class="logo-icon" style="width: 32px; height: 32px;">
           <span class="logo-text">RapidRide</span>
         </div>
       </div>
@@ -71,13 +71,15 @@
       <div class="card ride-request-card">
         <h3 class="card-title">Request a Ride</h3>
         <form id="rideRequestForm">
-          <div class="form-group">
+          <div class="form-group autocomplete-wrapper">
             <label>Pickup Location</label>
-            <input type="text" id="pickupInput" placeholder="Enter pickup location" class="input-field">
+            <input type="text" id="pickupInput" placeholder="Enter pickup location" class="input-field" autocomplete="off">
+            <div class="autocomplete-dropdown" id="pickupDropdown"></div>
           </div>
-          <div class="form-group">
+          <div class="form-group autocomplete-wrapper">
             <label>Drop Location</label>
-            <input type="text" id="dropInput" placeholder="Enter destination" class="input-field">
+            <input type="text" id="dropInput" placeholder="Enter destination" class="input-field" autocomplete="off">
+            <div class="autocomplete-dropdown" id="dropDropdown"></div>
           </div>
           <div class="form-group">
             <label>Ride Type</label>
@@ -96,31 +98,6 @@
             🚕 Request Ride
           </button>
         </form>
-      </div>
-
-      <!-- 10. REWARDS PANEL -->
-      <div class="card rewards-card">
-        <h3 class="card-title">Rewards & Coupons</h3>
-        <div class="reward-points">
-          <span class="points-icon">⭐</span>
-          <div class="points-info">
-            <span class="points-value" id="rewardPoints">0</span>
-            <span class="points-label">Points</span>
-          </div>
-        </div>
-        <div class="coupon-section">
-          <input type="text" id="couponInput" placeholder="Enter coupon code" class="input-field">
-          <button class="btn-secondary">Apply</button>
-        </div>
-      </div>
-
-      <!-- 9. PRE-BOOKINGS -->
-      <div class="card prebookings-card">
-        <h3 class="card-title">Scheduled Rides</h3>
-        <div class="prebooking-list" id="prebookingList">
-          <p class="empty-state" style="text-align: center; color: #999; padding: 20px;">No scheduled rides</p>
-        </div>
-        <button class="btn-secondary">📅 Schedule Ride</button>
       </div>
 
     </aside>
@@ -176,23 +153,23 @@
             <span class="status-badge arriving" id="rideStatus">Searching...</span>
             <p class="eta-text">ETA: <span id="etaCountdown">--</span></p>
           </div>
-          <button class="btn-cancel" id="cancelRideBtn">Cancel Ride</button>
+          <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button class="btn-primary" id="viewLiveRideBtn" style="flex: 1;">🗺️ View Live Ride</button>
+            <button class="btn-cancel" id="cancelRideBtn" style="flex: 1;">Cancel Ride</button>
+          </div>
         </div>
       </div>
 
-      <!-- 12. ANALYTICS SUMMARY -->
-      <div class="card analytics-card">
-        <h3 class="card-title">Analytics</h3>
-        <div class="chart-container" style="height:220px; padding:16px;">
-          <canvas id="analyticsChart"></canvas>
+      <!-- HELP SECTION (HORIZONTAL) -->
+      <div style="display: flex; gap: 15px; margin-top: 20px;">
+        <div class="card" style="flex: 1; padding: 20px; text-align: center;">
+          <button class="btn-secondary" id="reportIssueBtn" style="width: 100%;">⚠️ Report Issue</button>
         </div>
-      </div>
-
-      <!-- 11. RIDE HISTORY -->
-      <div class="card history-card">
-        <h3 class="card-title">Recent Rides</h3>
-        <div class="history-list" id="historyList">
-          <p class="empty-state" style="text-align: center; color: #999; padding: 20px;">No ride history yet</p>
+        <div class="card" style="flex: 1; padding: 20px; text-align: center;">
+          <button class="btn-secondary" id="contactSupportBtn" style="width: 100%;">💬 Contact Support</button>
+        </div>
+        <div class="card" style="flex: 1; padding: 20px; text-align: center; display: flex; align-items: center; justify-content: center;">
+          <a href="#" class="link-text" id="viewFaqBtn" style="font-size: 14px;">❓ View FAQ</a>
         </div>
       </div>
 
@@ -201,23 +178,48 @@
     <!-- RIGHT SIDEBAR -->
     <aside class="sidebar-right" id="sidebarRight">
       
-      <!-- 13. SUPPORT / HELP -->
-      <div class="card support-card">
-        <h3 class="card-title">Need Help?</h3>
-        <button class="btn-secondary" id="contactSupportBtn">💬 Contact Support</button>
-        <button class="btn-secondary" id="reportIssueBtn">⚠️ Report Issue</button>
-        <a href="#" class="link-text">❓ View FAQ</a>
+      <!-- FAVORITE LOCATIONS -->
+      <div class="card favorites-card">
+        <h3 class="card-title">Favorite Locations</h3>
+        <div id="favoritesList" style="max-height: 200px; overflow-y: auto;">
+          <div class="favorite-item" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;" data-address="MG Road, Bangalore, Karnataka 560001">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px;">🏠</span>
+              <div style="flex: 1;">
+                <p style="margin: 0; font-weight: 600; color: #2E4053;">Home</p>
+                <p style="margin: 0; font-size: 12px; color: #999;">MG Road, Bangalore, Karnataka 560001</p>
+              </div>
+            </div>
+          </div>
+          <div class="favorite-item" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;" data-address="Koramangala, Bangalore, Karnataka 560095">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px;">💼</span>
+              <div style="flex: 1;">
+                <p style="margin: 0; font-weight: 600; color: #2E4053;">Work</p>
+                <p style="margin: 0; font-size: 12px; color: #999;">Koramangala, Bangalore, Karnataka 560095</p>
+              </div>
+            </div>
+          </div>
+          <div class="favorite-item" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;" data-address="Indiranagar, Bangalore, Karnataka 560038">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px;">🏋️</span>
+              <div style="flex: 1;">
+                <p style="margin: 0; font-weight: 600; color: #2E4053;">Gym</p>
+                <p style="margin: 0; font-size: 12px; color: #999;">Indiranagar, Bangalore, Karnataka 560038</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-secondary" id="addFavoriteBtn" style="margin-top: 10px; width: 100%;">➕ Add Location</button>
       </div>
 
-      <!-- 14. PROFILE INFO -->
-      <div class="card profile-card">
-        <h3 class="card-title">Profile</h3>
-        <div class="profile-info">
-          <div class="profile-avatar-large" id="profileAvatarLarge">U</div>
-          <p class="profile-name-large" id="profileNameLarge">Loading...</p>
-          <p class="profile-phone" id="profilePhone">--</p>
-          <button class="btn-secondary" id="editProfileBtn">✏️ Edit Profile</button>
+      <!-- SCHEDULED RIDES -->
+      <div class="card prebookings-card">
+        <h3 class="card-title">Scheduled Rides</h3>
+        <div class="prebooking-list" id="prebookingList">
+          <p class="empty-state" style="text-align: center; color: #999; padding: 20px;">No scheduled rides</p>
         </div>
+        <button class="btn-secondary">📅 Schedule Ride</button>
       </div>
 
     </aside>
@@ -265,28 +267,59 @@
     </div>
   </div>
 
-  <!-- SUPPORT MODAL -->
+  <!-- CONTACT SUPPORT MODAL -->
   <div class="modal" id="supportModal">
     <div class="modal-content">
       <div class="modal-header">
         <h3>Contact Support</h3>
         <button class="close-btn" id="closeSupportModalBtn">✕</button>
       </div>
-      <form id="supportForm">
+      <div style="padding: 20px;">
+        <h4 style="margin: 0 0 15px 0; color: #2E4053;">📞 Phone Support</h4>
+        <div style="margin-bottom: 20px;">
+          <p style="margin: 5px 0; color: #555;"><strong>Customer Care:</strong> +91 1800-123-4567</p>
+          <p style="margin: 5px 0; color: #555;"><strong>Emergency:</strong> +91 1800-765-4321</p>
+        </div>
+        
+        <h4 style="margin: 20px 0 15px 0; color: #2E4053;">📧 Email Support</h4>
+        <div style="margin-bottom: 20px;">
+          <p style="margin: 5px 0; color: #555;"><strong>General:</strong> support@rapidride.com</p>
+          <p style="margin: 5px 0; color: #555;"><strong>Safety:</strong> safety@rapidride.com</p>
+        </div>
+        
+        <p style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 8px; color: #666; font-size: 14px;">
+          💡 Our support team is available 24/7 to assist you with any concerns.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORT ISSUE MODAL -->
+  <div class="modal" id="reportIssueModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Report Issue</h3>
+        <button class="close-btn" id="closeReportIssueModalBtn">✕</button>
+      </div>
+      <form id="reportIssueForm">
         <div class="form-group">
           <label>Issue Type</label>
-          <select class="input-field">
-            <option>Billing Issue</option>
-            <option>Driver Complaint</option>
-            <option>App Problem</option>
-            <option>Other</option>
+          <select class="input-field" id="issueTypeSelect" required>
+            <option value="">Select issue type</option>
+            <option value="billing">Billing Issue</option>
+            <option value="driver">Driver Complaint</option>
+            <option value="safety">Safety Concern</option>
+            <option value="app">App Problem</option>
+            <option value="route">Route/Navigation Issue</option>
+            <option value="payment">Payment Failed</option>
+            <option value="other">Other</option>
           </select>
         </div>
         <div class="form-group">
           <label>Description</label>
-          <textarea class="input-field" rows="4" placeholder="Describe your issue..."></textarea>
+          <textarea class="input-field" id="issueDescription" rows="4" placeholder="Please describe your issue in detail..." required></textarea>
         </div>
-        <button type="submit" class="btn-primary">Submit</button>
+        <button type="submit" class="btn-primary">Submit Report</button>
       </form>
     </div>
   </div>
@@ -316,6 +349,107 @@
           <button class="btn-secondary" data-theme="dark">Dark</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- FAQ MODAL -->
+  <div class="modal" id="faqModal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>Frequently Asked Questions</h3>
+        <button class="close-btn" id="closeFaqModalBtn">✕</button>
+      </div>
+      <div class="faq-list" style="max-height: 400px; overflow-y: auto; padding: 10px;">
+        <div class="faq-item" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+          <h4 style="margin: 0 0 8px 0; color: #2E4053;">How do I request a ride?</h4>
+          <p style="margin: 0; color: #666;">Enter your pickup and drop locations, select ride type, and click "Request Ride".</p>
+        </div>
+        <div class="faq-item" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+          <h4 style="margin: 0 0 8px 0; color: #2E4053;">How do I cancel a ride?</h4>
+          <p style="margin: 0; color: #666;">Click the "Cancel Ride" button on your current ride card. Note: Cancellation charges may apply.</p>
+        </div>
+        <div class="faq-item" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+          <h4 style="margin: 0 0 8px 0; color: #2E4053;">What ride types are available?</h4>
+          <p style="margin: 0; color: #666;">We offer Economy, Comfort, Premium, and Shared ride options with different pricing.</p>
+        </div>
+        <div class="faq-item" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+          <h4 style="margin: 0 0 8px 0; color: #2E4053;">How do payments work?</h4>
+          <p style="margin: 0; color: #666;">Fares are calculated based on distance and ride type. Payment is processed at the end of the trip.</p>
+        </div>
+        <div class="faq-item" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+          <h4 style="margin: 0 0 8px 0; color: #2E4053;">What should I do in an emergency?</h4>
+          <p style="margin: 0; color: #666;">Click the red SOS button in the bottom right corner to alert emergency contacts and authorities.</p>
+        </div>
+        <div class="faq-item" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+          <h4 style="margin: 0 0 8px 0; color: #2E4053;">How do I contact my driver?</h4>
+          <p style="margin: 0; color: #666;">Once a driver is assigned, their contact information will appear in the current ride card.</p>
+        </div>
+        <div class="faq-item" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+          <h4 style="margin: 0 0 8px 0; color: #2E4053;">Can I schedule rides in advance?</h4>
+          <p style="margin: 0; color: #666;">Yes! Use the "Schedule Ride" button to book rides for later dates and times.</p>
+        </div>
+        <div class="faq-item" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+          <h4 style="margin: 0 0 8px 0; color: #2E4053;">How do I earn reward points?</h4>
+          <p style="margin: 0; color: #666;">You earn points with each completed ride. Points can be redeemed for discounts on future rides.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGOUT CONFIRMATION MODAL -->
+  <div class="modal" id="logoutModal">
+    <div class="modal-content" style="max-width: 400px;">
+      <h3 style="margin: 0 0 15px 0; color: #2E4053;">Confirm Logout</h3>
+      <p style="margin: 0 0 20px 0; color: #666;">Are you sure you want to logout?</p>
+      <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="btn-secondary" id="cancelLogoutBtn">Cancel</button>
+        <button class="btn-primary" id="confirmLogoutBtn" style="background: #e74c3c;">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE RIDE MODAL -->
+  <div class="modal" id="scheduleRideModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📅 Schedule a Ride</h3>
+        <button class="close-btn" id="closeScheduleModalBtn">✕</button>
+      </div>
+      <form id="scheduleRideForm" style="padding: 20px;">
+        <div class="form-group">
+          <label>Pickup Location</label>
+          <input type="text" id="schedulePickupInput" placeholder="Enter pickup location" class="input-field" required>
+        </div>
+        <div class="form-group">
+          <label>Drop Location</label>
+          <input type="text" id="scheduleDropInput" placeholder="Enter destination" class="input-field" required>
+        </div>
+        <div class="form-group">
+          <label>Time</label>
+          <input type="time" id="scheduleDateTimeInput" class="input-field" required>
+        </div>
+        <div class="form-group">
+          <label>Ride Type</label>
+          <select id="scheduleRideTypeSelect" class="input-field">
+            <option value="economy">Economy</option>
+            <option value="comfort">Comfort</option>
+            <option value="luxury">Luxury</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Repeat Schedule</label>
+          <select id="scheduleRecurrenceSelect" class="input-field">
+            <option value="once">One-time only</option>
+            <option value="daily">Every day</option>
+            <option value="weekdays">Weekdays (Mon-Fri)</option>
+            <option value="weekends">Weekends (Sat-Sun)</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Schedule Ride</button>
+          <button type="button" class="btn-secondary" id="cancelScheduleBtn">Cancel</button>
+        </div>
+      </form>
     </div>
   </div>
 
