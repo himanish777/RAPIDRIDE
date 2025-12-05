@@ -291,18 +291,37 @@ class DashboardController {
     let pickupTimeout;
     let dropTimeout;
 
-    // Helper to get current position as Promise - DEFINE THIS FIRST
+    // Helper to get current position as Promise with a graceful fallback
+    // First attempt: high accuracy, short timeout. On failure retry with
+    // lower accuracy and longer timeout to improve success on desktops.
     this.getCurrentPosition = () => {
       return new Promise((resolve, reject) => {
-        if ('geolocation' in navigator) {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
-          });
-        } else {
-          reject(new Error('Geolocation not supported'));
+        if (!('geolocation' in navigator)) {
+          return reject(new Error('Geolocation not supported'));
         }
+
+        const primaryOptions = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 };
+        const fallbackOptions = { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 };
+
+        // Try primary (fast, accurate). On error (typically timeout) retry once with fallback.
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve(pos),
+          err => {
+            // If timeout or position unavailable, retry with relaxed options once
+            if (err && (err.code === 3 || err.code === 2)) {
+              console.warn('Primary geolocation failed, retrying with fallback options:', err);
+              navigator.geolocation.getCurrentPosition(
+                pos => resolve(pos),
+                fallbackErr => reject(fallbackErr),
+                fallbackOptions
+              );
+            } else {
+              // For permission denied (code 1) or other errors, fail fast
+              reject(err);
+            }
+          },
+          primaryOptions
+        );
       });
     };
 
@@ -356,7 +375,16 @@ class DashboardController {
           }
         } catch (error) {
           console.error('Location error:', error);
-          this.notificationManager.show('Failed to get location', 'error');
+          // Provide more helpful guidance to the user depending on error
+          if (error && error.code === 1) {
+            this.notificationManager.show('Location permission denied. Please allow location access in your browser.', 'error');
+          } else if (error && error.code === 3) {
+            this.notificationManager.show('Location request timed out. Try again or ensure your device has location services enabled.', 'error');
+          } else if (error && error.code === 2) {
+            this.notificationManager.show('Unable to determine location. Check your network or try again.', 'error');
+          } else {
+            this.notificationManager.show('Failed to get location', 'error');
+          }
         }
       } else {
         // Use cached location
