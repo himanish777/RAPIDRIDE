@@ -61,12 +61,35 @@ export const signupService = async ({ name, email, phone, password, role }) => {
   }
 };
 
-export const loginService = async ({ email, password, role }) => {
+export const loginService = async ({ email, password }) => {
   try {
-    logger.info('Login attempt', { email, role });
+    logger.info('Login attempt', { email });
     
-    const Model = role === 'driver' ? Driver : role === 'admin' ? Admin : Rider;
-    const user = await Model.findOne({ email });
+    // Check all three collections to find the user
+    let user = null;
+    let userRole = null;
+    
+    // Check Rider collection
+    user = await Rider.findOne({ email });
+    if (user) {
+      userRole = 'rider';
+    }
+    
+    // Check Driver collection if not found in Rider
+    if (!user) {
+      user = await Driver.findOne({ email });
+      if (user) {
+        userRole = 'driver';
+      }
+    }
+    
+    // Check Admin collection if not found in Driver
+    if (!user) {
+      user = await Admin.findOne({ email });
+      if (user) {
+        userRole = 'admin';
+      }
+    }
     
     if (!user) {
       logger.warn('Login failed - user not found', { email });
@@ -82,21 +105,15 @@ export const loginService = async ({ email, password, role }) => {
       return { success: false, message: "Wrong password" };
     }
 
-    if (role !== user.role) {
-      logger.warn('Login failed - role mismatch', { email, expectedRole: role, actualRole: user.role });
-      metrics.loginAttemptsCounter.inc({ status: 'role_mismatch' });
-      return { success: false, message: "Incorrect role selected" };
-    }
-
     const token = createToken({
       userId: user._id,
-      role: user.role
+      role: userRole
     });
 
     // Track successful login
     metrics.loginAttemptsCounter.inc({ status: 'success' });
 
-    logger.info('Login successful', { userId: user._id, email, role: user.role });
+    logger.info('Login successful', { userId: user._id, email, role: userRole });
     return {
       success: true,
       token,
@@ -105,7 +122,7 @@ export const loginService = async ({ email, password, role }) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role: user.role
+        role: userRole
       }
     };
   } catch (error) {

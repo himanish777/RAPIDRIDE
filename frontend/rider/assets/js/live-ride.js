@@ -29,6 +29,7 @@ class LiveRideTracker {
     this.lastDriverUpdate = null;
     this.trafficLevel = 'low'; // low, medium, heavy
     this.debugLogs = [];
+    this.autoRefreshInterval = null;
     
     this.init();
   }
@@ -106,6 +107,9 @@ class LiveRideTracker {
     }, 500);
     
     this.startLocationTracking();
+    
+    // Auto-refresh ride data every 5 seconds
+    this.startAutoRefresh();
   }
 
   // Initialize Leaflet Map
@@ -387,6 +391,21 @@ class LiveRideTracker {
 
       this.socket.on('connect', () => {
         console.log('Socket connected:', this.socket.id);
+        
+        // Subscribe to personal rider room for notifications
+        const token = localStorage.getItem('token');
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const riderId = payload.userId;
+            console.log('🔔 Subscribing to rider room:', riderId);
+            this.socket.emit('rider:subscribe', { riderId });
+          } catch (error) {
+            console.error('❌ Error parsing token:', error);
+          }
+        }
+        
+        // Subscribe to ride room for real-time updates
         if (this.rideId) {
           this.socket.emit('subscribe_ride', { rideId: this.rideId });
         }
@@ -411,6 +430,12 @@ class LiveRideTracker {
         }
       });
 
+      // Listen for driver cancellation
+      this.socket.on('ride:cancelled_by_driver', (data) => {
+        console.log('🚫 Driver cancelled ride:', data);
+        this.showDriverCancelledModal(data.reason || 'Driver cancelled the ride');
+      });
+
       this.socket.on('disconnect', () => {
         console.log('Socket disconnected');
       });
@@ -418,6 +443,57 @@ class LiveRideTracker {
     } catch (error) {
       console.error('Socket connection error:', error);
     }
+  }
+
+  // Auto-refresh ride data periodically
+  startAutoRefresh() {
+    // Refresh every 5 seconds
+    this.autoRefreshInterval = setInterval(async () => {
+      try {
+        console.log('🔄 Auto-refreshing ride data...');
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/rider/rides/${this.rideId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        if (result.success && result.ride) {
+          const ride = result.ride;
+          
+          // Check if ride was cancelled
+          if (ride.status === 'cancelled') {
+            clearInterval(this.autoRefreshInterval);
+            console.log('🚫 Ride was cancelled - detected via auto-refresh');
+            const cancelledBy = ride.cancelledBy === 'driver' ? 'driver' : 'rider';
+            if (cancelledBy === 'driver') {
+              this.showDriverCancelledModal('Driver cancelled the ride');
+            }
+            return;
+          }
+          
+          // Update driver location if available
+          if (ride.driver?.currentLocation) {
+            this.updateDriverLocation(
+              ride.driver.currentLocation.coordinates[1],
+              ride.driver.currentLocation.coordinates[0]
+            );
+          }
+          
+          // Update ride status in UI
+          if (this.currentRide?.status !== ride.status) {
+            console.log('📊 Ride status changed:', ride.status);
+            this.currentRide = ride;
+            // Update UI elements based on status
+          }
+          
+          console.log('✅ Auto-refresh complete');
+        }
+      } catch (error) {
+        console.error('❌ Auto-refresh error:', error);
+      }
+    }, 5000);
+    
+    console.log('✅ Auto-refresh started (every 5 seconds)');
   }
 
   // Load ride details from backend
@@ -1456,9 +1532,7 @@ class LiveRideTracker {
     try {
       this.showLoading(true);
       
-      const response = await this.api.request(`/rides/${this.rideId}/cancel`, {
-        method: 'POST'
-      });
+      const response = await this.api.cancelRide(this.rideId);
       
       if (response.success) {
         this.showToast('Ride cancelled successfully');
@@ -1502,6 +1576,36 @@ class LiveRideTracker {
     setTimeout(() => {
       toast.classList.remove('show');
     }, 3000);
+  }
+
+  // Show modal when driver cancels the ride
+  showDriverCancelledModal(reason) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('driverCancelledModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'driverCancelledModal';
+      modal.className = 'modal active';
+      modal.innerHTML = `
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>🚫 Ride Cancelled</h2>
+          </div>
+          <div class="modal-body">
+            <p style="font-size: 16px; margin-bottom: 12px;">Your driver has cancelled the ride.</p>
+            <p style="color: #666; font-size: 14px;">Reason: ${reason}</p>
+            <div class="modal-actions" style="margin-top: 24px;">
+              <button class="btn-primary-full" onclick="window.location.href='./dashboard.html'">
+                Return to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    } else {
+      modal.classList.add('active');
+    }
   }
 
   // Utility: Capitalize first letter
@@ -1840,6 +1944,9 @@ class LiveRideTracker {
     }
     if (this.etaInterval) {
       clearInterval(this.etaInterval);
+    }
+    if (this.autoRefreshInterval) {
+      clearInterval(this.autoRefreshInterval);
     }
     if (this.watchId) {
       navigator.geolocation.clearWatch(this.watchId);

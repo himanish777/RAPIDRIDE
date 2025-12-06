@@ -13,7 +13,8 @@ const state = {
   routeLine: null,
   requestTimer: null,
   onlineStartTime: null,
-  rideRequestTimerInterval: null
+  rideRequestTimerInterval: null,
+  autoRefreshInterval: null
 };
 
 // Make global functions available
@@ -47,6 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Initialize socket connection after profile is loaded
   setTimeout(initializeSocketConnection, 1000);
+  
+  // Start auto-refresh for current ride status
+  startDashboardAutoRefresh();
 });
 
 // Initialize Map
@@ -122,8 +126,7 @@ function setupEventListeners() {
   document.getElementById('declineRideBtn')?.addEventListener('click', declineRideRequest);
   
   // Current Ride Actions
-  document.getElementById('startRideBtn')?.addEventListener('click', startRide);
-  document.getElementById('completeRideBtn')?.addEventListener('click', completeRide);
+  document.getElementById('viewLiveRideBtn')?.addEventListener('click', viewLiveRide);
   document.getElementById('callRiderBtn')?.addEventListener('click', callRider);
   document.getElementById('cancelRideBtn')?.addEventListener('click', cancelRide);
   
@@ -201,11 +204,8 @@ async function loadDriverProfile() {
         statusMessage.textContent = "You're Online";
         document.querySelector('.availability-tip').textContent = 'You will receive ride requests';
         
-        // Auto-subscribe to ride requests if was online
-        if (driverSocketManager.isConnected()) {
-          driverSocketManager.subscribeToRideRequests();
-          console.log('✅ Auto-subscribed to ride requests (was online)');
-        }
+        // Note: Socket subscription will happen in initializeSocketConnection()
+        console.log('📱 Driver is online - will subscribe to ride requests when socket connects');
       } else {
         statusText.textContent = 'Offline';
         statusText.style.color = 'var(--text-muted)';
@@ -482,6 +482,20 @@ async function completeRide() {
     console.error('Error completing ride:', error);
     showNotification('Failed to complete ride', 'error');
   }
+}
+
+// View Live Ride (Navigate to live-ride page)
+function viewLiveRide() {
+  if (!state.currentRide || !state.currentRide._id) {
+    showNotification('No active ride', 'error');
+    return;
+  }
+  
+  // Store current ride data in localStorage for live-ride page
+  localStorage.setItem('currentDriverRide', JSON.stringify(state.currentRide));
+  
+  // Navigate to live-ride page with ride ID
+  window.location.href = `live-ride.html?rideId=${state.currentRide._id}`;
 }
 
 // Cancel Ride
@@ -934,6 +948,53 @@ async function submitVehicleSetup() {
 }
 
 // ===== SOCKET CONNECTION =====
+// Auto-refresh dashboard data
+function startDashboardAutoRefresh() {
+  // Refresh every 10 seconds
+  state.autoRefreshInterval = setInterval(async () => {
+    try {
+      console.log('🔄 Auto-refreshing dashboard...');
+      
+      // Check for current ride
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/driver/current-ride', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      
+      if (result.success && result.ride) {
+        const ride = result.ride;
+        state.currentRide = ride;
+        localStorage.setItem('currentDriverRide', JSON.stringify(ride));
+        
+        // Show View Live Ride button if there's an active ride
+        const viewLiveRideBtn = document.getElementById('viewLiveRideBtn');
+        if (viewLiveRideBtn && (ride.status === 'accepted' || ride.status === 'in-progress')) {
+          viewLiveRideBtn.style.display = 'block';
+        }
+        
+        console.log('✅ Dashboard auto-refresh - found active ride:', ride._id);
+      } else {
+        state.currentRide = null;
+        localStorage.removeItem('currentDriverRide');
+        
+        const viewLiveRideBtn = document.getElementById('viewLiveRideBtn');
+        if (viewLiveRideBtn) {
+          viewLiveRideBtn.style.display = 'none';
+        }
+      }
+      
+      // Refresh stats
+      await loadTodayStats();
+      
+    } catch (error) {
+      console.error('❌ Dashboard auto-refresh error:', error);
+    }
+  }, 10000);
+  
+  console.log('✅ Dashboard auto-refresh started (every 10 seconds)');
+}
+
 function initializeSocketConnection() {
   if (!state.driverInfo || !state.driverInfo._id) {
     console.log('Driver info not loaded yet, retrying socket connection...');
@@ -951,6 +1012,20 @@ function initializeSocketConnection() {
   });
 
   console.log('✅ Socket connection initialized for driver:', state.driverInfo._id);
+  
+  // IMPORTANT: If driver was already online when they logged in, subscribe to ride requests
+  if (state.isOnline) {
+    console.log('🔔 Driver is online - subscribing to ride requests...');
+    // Wait a moment for socket to fully connect
+    setTimeout(() => {
+      if (driverSocketManager.isConnected()) {
+        driverSocketManager.subscribeToRideRequests();
+        console.log('✅ Auto-subscribed to ride requests on login');
+      } else {
+        console.warn('⚠️ Socket not connected, subscription may have failed');
+      }
+    }, 1000);
+  }
 }
 
 // Request notification permission
@@ -1133,3 +1208,16 @@ function showDriverNotification(message, type = 'info') {
     toast.style.display = 'none';
   }, 5000);
 }
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  if (state.autoRefreshInterval) {
+    clearInterval(state.autoRefreshInterval);
+  }
+  if (state.requestTimer) {
+    clearInterval(state.requestTimer);
+  }
+  if (state.rideRequestTimerInterval) {
+    clearInterval(state.rideRequestTimerInterval);
+  }
+});

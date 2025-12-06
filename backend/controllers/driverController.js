@@ -151,7 +151,14 @@ export const completeRide = async (req, res) => {
 
 export const cancelRide = async (req, res) => {
   try {
-    const { rideId, reason } = req.body;
+    // Support both RESTful (/rides/:id/cancel) and body ({rideId}) formats
+    const rideId = req.params.id || req.body.rideId;
+    const { reason } = req.body;
+    
+    if (!rideId) {
+      return res.status(400).json({ success: false, message: 'Ride ID is required' });
+    }
+    
     const result = await driverService.cancelRideService(req.user.userId, rideId, reason);
     if (!result.success) {
       return res.status(400).json(result);

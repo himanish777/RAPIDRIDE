@@ -12,6 +12,7 @@ class DriverLiveRide {
     this.routeLine = null;
     this.currentStatus = 'assigned'; // assigned, arriving, on_trip
     this.locationUpdateInterval = null;
+    this.autoRefreshInterval = null;
     this.driverId = null;
     this.rideId = null;
   }
@@ -30,6 +31,16 @@ class DriverLiveRide {
 
     // Get driver ID from token or storage
     this.driverId = this.getDriverIdFromToken(token);
+    console.log('👤 Driver ID:', this.driverId);
+    
+    // CRITICAL: Ensure socket manager is connected BEFORE loading ride
+    if (!driverSocketManager.isConnected()) {
+      console.log('🔌 Connecting driver socket manager...');
+      driverSocketManager.connect(this.driverId);
+      
+      // Wait a moment for socket to connect
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
     
     // Load ride data
     await this.loadRideData();
@@ -45,6 +56,9 @@ class DriverLiveRide {
     
     // Start location tracking
     this.startLocationTracking();
+    
+    // Start auto-refresh
+    this.startAutoRefresh();
     
     // Update UI based on current status
     this.updateUIForStatus();
@@ -62,30 +76,25 @@ class DriverLiveRide {
 
   async loadRideData() {
     try {
-      // Try to get ride data from localStorage first
-      const storedRide = localStorage.getItem('currentDriverRide');
-      if (storedRide) {
-        this.rideData = JSON.parse(storedRide);
-        this.rideId = this.rideData._id;
-        console.log('✅ Loaded ride data from localStorage:', this.rideData);
-      } else {
-        // Fetch from API
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/driver/current-ride', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        const result = await response.json();
-        if (result.success && result.ride) {
-          this.rideData = result.ride;
-          this.rideId = this.rideData._id;
-          localStorage.setItem('currentDriverRide', JSON.stringify(this.rideData));
-          console.log('✅ Loaded ride data from API:', this.rideData);
-        } else {
-          throw new Error('No active ride found');
+      // Always fetch fresh data from API to avoid stale localStorage
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/driver/current-ride', {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
+      });
+      
+      const result = await response.json();
+      if (result.success && result.ride) {
+        this.rideData = result.ride;
+        this.rideId = this.rideData._id;
+        // Update localStorage with fresh data
+        localStorage.setItem('currentDriverRide', JSON.stringify(this.rideData));
+        console.log('✅ Loaded fresh ride data from API:', this.rideData);
+        console.log('✅ Current rideId:', this.rideId);
+        console.log('✅ Current ride status:', this.rideData.status);
+      } else {
+        throw new Error('No active ride found');
       }
       
       // Update UI with ride details
@@ -96,6 +105,54 @@ class DriverLiveRide {
       alert('No active ride found. Redirecting to dashboard...');
       window.location.href = 'dashboard.html';
     }
+  }
+
+  // Auto-refresh ride data periodically
+  startAutoRefresh() {
+    // Refresh every 5 seconds
+    this.autoRefreshInterval = setInterval(async () => {
+      try {
+        console.log('🔄 Auto-refreshing ride data...');
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/driver/current-ride', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        if (result.success && result.ride) {
+          const ride = result.ride;
+          
+          // Check if ride was cancelled
+          if (ride.status === 'cancelled') {
+            clearInterval(this.autoRefreshInterval);
+            console.log('🚫 Ride was cancelled - detected via auto-refresh');
+            const cancelledBy = ride.cancelledBy === 'rider' ? 'rider' : 'driver';
+            if (cancelledBy === 'rider') {
+              this.showRiderCancelledModal('Rider cancelled the ride');
+            }
+            return;
+          }
+          
+          // Update ride data and localStorage
+          this.rideData = ride;
+          this.rideId = ride._id;
+          localStorage.setItem('currentDriverRide', JSON.stringify(ride));
+          
+          // Update UI
+          this.updateRideInfo();
+          
+          console.log('✅ Auto-refresh complete - status:', ride.status);
+        } else {
+          // No active ride found
+          clearInterval(this.autoRefreshInterval);
+          console.log('⚠️ No active ride - stopping auto-refresh');
+        }
+      } catch (error) {
+        console.error('❌ Auto-refresh error:', error);
+      }
+    }, 5000);
+    
+    console.log('✅ Auto-refresh started (every 5 seconds)');
   }
 
   initMap() {
@@ -433,23 +490,48 @@ class DriverLiveRide {
     try {
       document.getElementById('cancelModal').style.display = 'none';
       
+      if (!this.rideId) {
+        console.error('❌ No rideId available');
+        this.showNotification('❌ No active ride to cancel', 'error');
+        return;
+      }
+      
+      console.log('🔍 Cancelling ride with ID:', this.rideId);
+      console.log('🔍 Driver ID:', this.driverId);
+      console.log('🔍 Ride data:', this.rideData);
+      
       const token = localStorage.getItem('token');
+      const requestBody = { rideId: this.rideId };
+      console.log('📤 Sending request body:', requestBody);
+      
       const response = await fetch(`/api/driver/cancel-ride`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ rideId: this.rideId })
+        body: JSON.stringify(requestBody)
       });
       
+      console.log('📡 Cancel response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Cancel failed:', response.status, errorText);
+        throw new Error(`Cancel failed: ${response.status}`);
+      }
+      
       const result = await response.json();
+      console.log('✅ Cancel result:', result);
+      
       if (result.success) {
         this.showNotification('Trip cancelled');
         setTimeout(() => {
           localStorage.removeItem('currentDriverRide');
           window.location.href = 'dashboard.html';
         }, 1500);
+      } else {
+        throw new Error(result.message || 'Cancel failed');
       }
     } catch (error) {
       console.error('Error cancelling trip:', error);
@@ -482,7 +564,55 @@ class DriverLiveRide {
 
   setupSocketConnection() {
     if (driverSocketManager.isConnected()) {
+      console.log('📡 Setting up socket listeners for driver live-ride...');
+      
+      // Subscribe to ride updates (driver:subscribe already handled by socket manager)
       driverSocketManager.subscribeToRide(this.rideId);
+      
+      // Listen for rider cancellation
+      const socket = driverSocketManager.socket;
+      if (socket) {
+        // Remove any existing listeners to prevent duplicates
+        socket.off('ride:cancelled_by_rider');
+        
+        socket.on('ride:cancelled_by_rider', (data) => {
+          console.log('🚫 Rider cancelled ride:', data);
+          this.showRiderCancelledModal(data.message || 'Rider has cancelled the ride');
+        });
+        console.log('✅ Listening for ride:cancelled_by_rider events');
+      }
+    } else {
+      console.error('❌ Socket manager not connected!');
+    }
+  }
+
+  showRiderCancelledModal(message) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('riderCancelledModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'riderCancelledModal';
+      modal.className = 'modal';
+      modal.style.cssText = 'display: flex; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 99999;';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 400px; background: white; border-radius: 12px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+          <div class="modal-header" style="margin-bottom: 16px;">
+            <h2 style="margin: 0; color: #e74c3c; font-size: 20px;">🚫 Ride Cancelled</h2>
+          </div>
+          <div class="modal-body">
+            <p style="font-size: 16px; margin-bottom: 12px; color: #333;">${message}</p>
+            <p style="color: #666; font-size: 14px;">The rider has cancelled this ride.</p>
+            <div class="modal-actions" style="margin-top: 24px;">
+              <button style="width: 100%; padding: 12px; background: #0D9488; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;" onclick="window.location.href='dashboard.html'">
+                Return to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    } else {
+      modal.style.display = 'flex';
     }
   }
 
@@ -514,6 +644,16 @@ class DriverLiveRide {
 document.addEventListener('DOMContentLoaded', () => {
   const liveRide = new DriverLiveRide();
   liveRide.init();
+  
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    if (liveRide.autoRefreshInterval) {
+      clearInterval(liveRide.autoRefreshInterval);
+    }
+    if (liveRide.locationUpdateInterval) {
+      clearInterval(liveRide.locationUpdateInterval);
+    }
+  });
 });
 
 export default DriverLiveRide;

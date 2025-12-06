@@ -37,6 +37,13 @@ export const emitToRider = (riderId, event, data) => {
   }
 };
 
+// Emit events to specific driver
+export const emitToDriver = (driverId, event, data) => {
+  if (ioInstance) {
+    ioInstance.to(`driver_${driverId}`).emit(event, data);
+  }
+};
+
 // Broadcast to all connected clients
 export const broadcastEvent = (event, data) => {
   if (ioInstance) {

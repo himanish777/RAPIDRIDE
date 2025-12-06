@@ -2,7 +2,6 @@ const url = location.origin;
 async function login() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
-  const role = document.getElementById("role").value;
 
   if (!email || !password) {
     alert("Please fill in all fields");
@@ -13,7 +12,7 @@ async function login() {
     const res = await fetch(`${url}/auth/login`, {  
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, role })
+      body: JSON.stringify({ email, password })
     });
 
     // Debug: log status and raw response before parsing

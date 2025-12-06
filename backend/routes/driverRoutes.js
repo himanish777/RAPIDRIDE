@@ -27,6 +27,7 @@ router.post("/rides/:rideId/status", driverController.updateRideStatus); // Upda
 router.post("/start-ride", driverController.startRide);
 router.post("/complete-ride", driverController.completeRide);
 router.post("/cancel-ride", driverController.cancelRide);
+router.post("/rides/:id/cancel", driverController.cancelRide); // RESTful cancel endpoint
 
 // ===== EARNINGS & STATISTICS ROUTES =====
 router.get("/today-stats", driverController.getTodayStats);

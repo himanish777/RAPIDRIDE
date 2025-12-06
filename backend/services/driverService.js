@@ -2,7 +2,7 @@ import Driver from "../models/Driver.js";
 import Ride from "../models/Ride.js";
 import logger from '../config/logger.js';
 import { metrics } from '../config/metrics.js';
-import { emitToAdmin, emitToRide, emitToDrivers } from '../config/socketHelper.js';
+import { emitToAdmin, emitToRide, emitToDrivers, emitToRider } from '../config/socketHelper.js';
 
 // ===== DRIVER PROFILE SERVICES =====
 export const getDriverProfileService = async (driverId) => {
@@ -377,15 +377,30 @@ export const cancelRideService = async (driverId, rideId, reason) => {
     const ride = await Ride.findById(rideId);
     
     if (!ride) {
+      logger.warn('Cancel failed - Ride not found', { driverId, rideId });
       return { success: false, message: 'Ride not found' };
     }
 
+    logger.info('Driver attempting to cancel ride', { 
+      driverId, 
+      rideId, 
+      rideDriver: String(ride.driver), 
+      rideStatus: ride.status,
+      match: String(ride.driver) === driverId
+    });
+
     if (String(ride.driver) !== driverId) {
+      logger.warn('Cancel failed - Unauthorized', { driverId, rideDriver: ride.driver });
       return { success: false, message: 'Unauthorized' };
     }
 
     if (['completed', 'cancelled'].includes(ride.status)) {
-      return { success: false, message: 'Cannot cancel this ride' };
+      logger.warn('Cancel failed - Ride already completed/cancelled', { 
+        driverId, 
+        rideId, 
+        status: ride.status 
+      });
+      return { success: false, message: `Cannot cancel this ride - status is ${ride.status}` };
     }
 
     ride.status = 'cancelled';
@@ -408,6 +423,16 @@ export const cancelRideService = async (driverId, rideId, reason) => {
     // Emit events
     emitToAdmin('ride:cancelled', { rideId, driverId, cancelledBy: 'driver' });
     emitToRide(rideId, 'ride:status_changed', { status: 'cancelled', ride });
+    
+    // Notify rider
+    if (ride.rider) {
+      emitToRider(String(ride.rider), 'ride:cancelled_by_driver', { 
+        rideId, 
+        reason: reason || 'Driver cancelled the ride',
+        message: 'Your ride has been cancelled by the driver' 
+      });
+      logger.info('Notified rider of driver cancellation', { riderId: ride.rider, rideId });
+    }
 
     return { success: true, ride, message: 'Ride cancelled' };
   } catch (err) {

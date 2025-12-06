@@ -2,7 +2,7 @@ import Ride from "../models/Ride.js";
 import Rider from "../models/Rider.js";
 import logger from '../config/logger.js';
 import { metrics } from '../config/metrics.js';
-import { emitToAdmin, emitToRide, emitToDrivers, emitToRider } from '../config/socketHelper.js';
+import { emitToAdmin, emitToRide, emitToDrivers, emitToRider, emitToDriver } from '../config/socketHelper.js';
 import { scheduledRidesQueue, getJobId } from '../config/queue.js';
 
 // ===== USER PROFILE SERVICES =====
@@ -163,18 +163,31 @@ export const cancelRideService = async (userId, rideId) => {
       }
     }
 
+    // Track if ride was active (not scheduled) before cancelling
+    const wasActive = ride.status !== 'scheduled';
+
     ride.status = 'cancelled';
+    ride.cancelledBy = 'rider';
+    await ride.save();
     
     // Track cancellation metric
     metrics.ridesCancelledCounter.inc({ cancelled_by: 'rider' });
-    if (ride.status !== 'scheduled') {
+    if (wasActive) {
       metrics.activeRidesGauge.dec();
     }
-    await ride.save();
 
     // Emit real-time event to admin and ride room
-    emitToAdmin('ride:cancelled', { rideId: ride._id, userId });
+    emitToAdmin('ride:cancelled', { rideId: ride._id, userId, cancelledBy: 'rider' });
     emitToRide(rideId, 'ride:status_changed', { status: 'cancelled', ride });
+    
+    // Notify driver if assigned
+    if (ride.driver) {
+      emitToDriver(String(ride.driver), 'ride:cancelled_by_rider', { 
+        rideId: ride._id, 
+        message: 'Rider has cancelled the ride' 
+      });
+      logger.info('Notified driver of rider cancellation', { driverId: ride.driver, rideId });
+    }
 
     return { success: true, ride };
   } catch (err) {

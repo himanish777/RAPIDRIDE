@@ -53,8 +53,8 @@ export class DriverSocketManager {
       console.log('✅ Driver socket connected:', this.socket.id);
       this.reconnectAttempts = 0;
       
-      // Subscribe to ride requests
-      this.subscribeToRideRequests();
+      // Note: Subscription is handled by dashboard when driver goes online
+      // Don't auto-subscribe here to avoid duplicates
     });
 
     this.socket.on('connect_error', (error) => {
@@ -100,6 +100,9 @@ export class DriverSocketManager {
         this.closeRideRequestModal();
       }
     });
+
+    // Ride cancelled by rider - handled in live-ride.js to avoid duplicates
+    // (listener added in setupSocketConnection method)
   }
 
   // Subscribe to ride requests
@@ -248,6 +251,38 @@ export class DriverSocketManager {
   closeRideRequestModal() {
     if (window.closeRideRequestModal) {
       window.closeRideRequestModal();
+    }
+  }
+
+  // Show modal when rider cancels the ride
+  showRiderCancelledModal(message) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('riderCancelledModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'riderCancelledModal';
+      modal.className = 'modal active';
+      modal.style.display = 'flex';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 400px; background: white; border-radius: 12px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+          <div class="modal-header" style="margin-bottom: 16px;">
+            <h2 style="margin: 0; color: #e74c3c; font-size: 20px;">🚫 Ride Cancelled</h2>
+          </div>
+          <div class="modal-body">
+            <p style="font-size: 16px; margin-bottom: 12px; color: #333;">${message}</p>
+            <p style="color: #666; font-size: 14px;">The rider has cancelled this ride.</p>
+            <div class="modal-actions" style="margin-top: 24px;">
+              <button class="btn-primary-full" style="width: 100%; padding: 12px; background: #0D9488; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;" onclick="window.location.href='./dashboard.html'">
+                Return to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    } else {
+      modal.style.display = 'flex';
+      modal.classList.add('active');
     }
   }
 
