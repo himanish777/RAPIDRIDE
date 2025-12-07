@@ -1,6 +1,25 @@
 console.log("SIGNUP.JS LOADED!");
 const url = "http://localhost:5500"
 
+// Check URL parameters and set default role
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const roleParam = urlParams.get('role');
+  
+  if (roleParam) {
+    const roleSelect = document.getElementById("role");
+    if (roleSelect) {
+      // Set the role from URL parameter (rider or driver)
+      if (roleParam.toLowerCase() === 'driver') {
+        roleSelect.value = 'driver';
+      } else if (roleParam.toLowerCase() === 'rider') {
+        roleSelect.value = 'rider';
+      }
+      console.log(`Role set to: ${roleSelect.value} from URL parameter`);
+    }
+  }
+});
+
 async function signup() {
   const name = document.getElementById("name").value;
   const email = document.getElementById("email").value;
