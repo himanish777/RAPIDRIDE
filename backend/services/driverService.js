@@ -3,6 +3,7 @@ import Ride from "../models/Ride.js";
 import logger from '../config/logger.js';
 import { metrics } from '../config/metrics.js';
 import { emitToAdmin, emitToRide, emitToDrivers } from '../config/socketHelper.js';
+import NotificationService from './notificationService.js';
 
 // ===== DRIVER PROFILE SERVICES =====
 export const getDriverProfileService = async (driverId) => {
@@ -209,6 +210,9 @@ export const acceptRideService = async (driverId, rideId) => {
 
     // Check if driver is online and available
     const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return { success: false, message: 'Driver not found' };
+    }
     if (!driver.isOnline || !driver.isAvailable) {
       return { success: false, message: 'Driver must be online and available' };
     }
@@ -234,6 +238,10 @@ export const acceptRideService = async (driverId, rideId) => {
     // Notify all other drivers that this ride was accepted
     emitToDrivers('ride:acceptedByOther', { rideId });
     console.log(`✅ Ride ${rideId} accepted by driver ${driverId}, notifying other drivers`);
+    
+    // Send notifications
+    await NotificationService.notifyRideAcceptedSuccess(driverId, rideId, ride.pickupLocation.address);
+    await NotificationService.notifyDriverAccepted(ride.rider, rideId, driver.name);
 
     return { success: true, ride, message: 'Ride accepted successfully' };
   } catch (err) {
@@ -277,6 +285,16 @@ export const updateRideStatusService = async (driverId, rideId, status) => {
     // Emit events
     emitToAdmin('ride:status_changed', { rideId, driverId, status });
     emitToRide(rideId, 'ride:status_changed', { status, ride });
+    
+    // Get driver info for notifications
+    const driver = await Driver.findById(driverId).select('name');
+    
+    // Send status-specific notifications to rider
+    if (status === 'arriving') {
+      await NotificationService.notifyDriverOnWay(ride.rider, rideId, driver.name, 5);
+    } else if (status === 'waiting') {
+      await NotificationService.notifyDriverArrived(ride.rider, rideId, driver.name);
+    }
 
     return { success: true, ride, message: `Ride status updated to ${status}` };
   } catch (err) {
@@ -310,6 +328,9 @@ export const startRideService = async (driverId, rideId) => {
     // Emit events
     emitToAdmin('ride:started', { rideId, driverId });
     emitToRide(rideId, 'ride:status_changed', { status: 'on_trip', ride });
+    
+    // Send notifications
+    await NotificationService.notifyTripStarted(ride.rider, rideId);
 
     return { success: true, ride, message: 'Ride started' };
   } catch (err) {
@@ -364,6 +385,19 @@ export const completeRideService = async (driverId, rideId) => {
     // Emit events
     emitToAdmin('ride:completed', { rideId, driverId, fare: ride.fare });
     emitToRide(rideId, 'ride:status_changed', { status: 'completed', ride });
+    
+
+    // Send notifications
+    await NotificationService.notifyTripEnded(ride.rider, rideId, ride.fare);
+    await NotificationService.notifyTripEndedSuccess(driverId, rideId, ride.fare);
+
+    // Notify rider about payment success (for all payment methods)
+    await NotificationService.notifyPaymentSuccess(ride.rider, rideId, ride.fare);
+
+    // Notify about payment collection (if cash)
+    if (ride.paymentMethod === 'cash' || !ride.paymentMethod) {
+      await NotificationService.notifyCashCollect(driverId, rideId, ride.fare);
+    }
 
     return { success: true, ride, message: 'Ride completed successfully' };
   } catch (err) {
@@ -408,6 +442,9 @@ export const cancelRideService = async (driverId, rideId, reason) => {
     // Emit events
     emitToAdmin('ride:cancelled', { rideId, driverId, cancelledBy: 'driver' });
     emitToRide(rideId, 'ride:status_changed', { status: 'cancelled', ride });
+    
+    // Send notification to rider
+    await NotificationService.notifyDriverCancelled(ride.rider, rideId, driver.name);
 
     return { success: true, ride, message: 'Ride cancelled' };
   } catch (err) {

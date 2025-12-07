@@ -3,12 +3,12 @@ export class API {
   constructor() {
     // Use the current origin so frontend works across ports/hosts without hardcoding
     this.baseURL = `${location.origin}/api`;
-    this.token = localStorage.getItem('token');
+    this.token = localStorage.getItem('rapidride_token');
   }
 
   // Get authorization headers
   getHeaders() {
-    const token = this.token || localStorage.getItem('token');
+    const token = this.token || localStorage.getItem('rapidride_token');
     const headers = {
       'Content-Type': 'application/json'
     };

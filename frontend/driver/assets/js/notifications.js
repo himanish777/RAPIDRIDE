@@ -1,4 +1,4 @@
-// Notifications Module - Manages in-app notifications
+// Notifications Module for Drivers - Manages in-app notifications
 export class NotificationManager {
   constructor(socket = null) {
     this.notifications = [];
@@ -29,6 +29,11 @@ export class NotificationManager {
       console.log('📢 New notification received:', data);
       if (data.notification) {
         this.addNotification(data.notification);
+        
+        // Play sound for urgent notifications (new ride requests)
+        if (data.notification.type === 'new_ride_request') {
+          this.playNotificationSound();
+        }
       }
     });
     
@@ -45,9 +50,9 @@ export class NotificationManager {
   
   // Get user data from localStorage
   getUserData() {
-    const riderData = localStorage.getItem('rapidride_rider');
-    if (riderData) {
-      return JSON.parse(riderData);
+    const driverData = localStorage.getItem('rapidride_driver');
+    if (driverData) {
+      return JSON.parse(driverData);
     }
     return null;
   }
@@ -74,7 +79,8 @@ export class NotificationManager {
             icon: n.icon,
             isRead: n.isRead,
             timestamp: n.createdAt,
-            metadata: n.metadata
+            metadata: n.metadata,
+            type: n.type
           }));
           this.updateNotificationPanel();
           this.updateNotificationBadge();
@@ -188,7 +194,8 @@ export class NotificationManager {
       isRead: notificationData.isRead || false,
       timestamp: notificationData.timestamp || notificationData.createdAt || new Date(),
       metadata: notificationData.metadata || {},
-      priority: notificationData.priority || 'medium'
+      priority: notificationData.priority || 'medium',
+      type: notificationData.type
     };
     
     this.notifications.unshift(notification);
@@ -201,16 +208,16 @@ export class NotificationManager {
     this.updateNotificationPanel();
     this.updateNotificationBadge();
 
-    // Always show toast for new notification (longer duration for important types)
+    // Show toast for new notification with priority-based type
     const toastType = this.getToastType(notification.priority);
-    const duration = (toastType === 'error' || toastType === 'warning' || notification.type === 'payment_success') ? 5000 : 3500;
-    this.show(notificationData.title, toastType, duration);
-
+    this.show(notificationData.title, toastType, 5000); // Longer duration for drivers
+    
     // Try browser notification if permission granted
-    if (notification.priority === 'urgent' || notification.priority === 'high' || notification.type === 'payment_success') {
+    if (notification.priority === 'urgent' || notification.priority === 'high') {
       this.showBrowserNotification(notification.title, {
         body: notification.message,
-        icon: '/assets/images/logo.png'
+        icon: '/assets/images/logo.png',
+        requireInteraction: notification.type === 'new_ride_request'
       });
     }
   }
@@ -357,6 +364,17 @@ export class NotificationManager {
         window.focus();
         notification.close();
       };
+    }
+  }
+  
+  // Play notification sound (for new ride requests)
+  playNotificationSound() {
+    try {
+      const audio = new Audio('/assets/sounds/notification.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(err => console.log('Could not play sound:', err));
+    } catch (error) {
+      console.log('Sound not available');
     }
   }
 }

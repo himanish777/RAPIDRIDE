@@ -1456,9 +1456,7 @@ class LiveRideTracker {
     try {
       this.showLoading(true);
       
-      const response = await this.api.request(`/rides/${this.rideId}/cancel`, {
-        method: 'POST'
-      });
+      const response = await this.api.cancelRide(this.rideId);
       
       if (response.success) {
         this.showToast('Ride cancelled successfully');

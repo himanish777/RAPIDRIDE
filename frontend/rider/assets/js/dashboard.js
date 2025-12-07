@@ -1554,7 +1554,7 @@ class DashboardController {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('rapidride_token') || localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           issueType,

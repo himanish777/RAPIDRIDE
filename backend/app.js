@@ -4,6 +4,7 @@ import authRoutes from "./routes/authRoutes.js";
 import riderRoutes from './routes/riderRoutes.js';
 import driverRoutes from './routes/driverRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import loggingMiddleware from './middleware/loggingMiddleware.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -43,6 +44,7 @@ app.use("/auth", authRoutes);
 app.use('/api/rider', riderRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Serve login page at root
 app.get('/', (req, res) => {

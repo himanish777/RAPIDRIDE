@@ -5,7 +5,7 @@ export class DriverSocketManager {
     this.serverURL = (typeof window !== 'undefined' && window.location && window.location.origin)
       ? window.location.origin
       : 'http://localhost:5500';
-    this.token = localStorage.getItem('token');
+    this.token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
     this.driverId = null;
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
@@ -146,7 +146,7 @@ export class DriverSocketManager {
   async acceptRide(rideId) {
     try {
       console.log('🔐 Getting token from localStorage...');
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
       console.log('🔑 Token found:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
       
       const url = `/api/driver/rides/${rideId}/accept`;

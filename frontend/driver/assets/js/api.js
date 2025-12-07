@@ -3,7 +3,7 @@ export const API_BASE_URL = 'http://localhost:5500';
 
 // API Helper Functions
 export async function apiRequest(endpoint, options = {}) {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
   
   const defaultHeaders = {
     'Content-Type': 'application/json',

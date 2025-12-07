@@ -40,6 +40,15 @@ setSocketInstance(io);
 io.on('connection', (socket) => {
   // logger.info('Socket connected', { socketId: socket.id });
 
+  // User subscribes to their personal notification room
+  socket.on('user:subscribe', (data) => {
+    if (data && data.userId) {
+      socket.userId = data.userId;
+      socket.join(`user_${data.userId}`);
+      console.log(`✅ User ${data.userId} subscribed to notifications`);
+    }
+  });
+
   socket.on('admin:subscribe', () => {
     socket.join('admin_room');
     // logger.info('Socket joined admin room', { socketId: socket.id });

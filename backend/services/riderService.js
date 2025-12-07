@@ -3,6 +3,7 @@ import Rider from "../models/Rider.js";
 import logger from '../config/logger.js';
 import { metrics } from '../config/metrics.js';
 import { emitToAdmin, emitToRide, emitToDrivers } from '../config/socketHelper.js';
+import NotificationService from './notificationService.js';
 
 // ===== USER PROFILE SERVICES =====
 export const getUserProfileService = async (userId) => {
@@ -35,10 +36,20 @@ export const requestRideService = async (userId, { pickup, drop, rideType }) => 
       return { success: false, message: 'pickup and drop required' };
     }
 
-    // Check if user already has an active ride
+    // Auto-cancel old 'searching' rides (timeout: 5 minutes)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    await Ride.updateMany({
+      rider: userId,
+      status: 'searching',
+      createdAt: { $lt: fiveMinutesAgo }
+    }, {
+      status: 'cancelled'
+    });
+
+    // Check if user already has an active ride (excluding searching status)
     const existingRide = await Ride.findOne({
       rider: userId,
-      status: { $nin: ['completed', 'cancelled'] }
+      status: { $in: ['assigned', 'arriving', 'waiting', 'on_trip'] }
     });
 
     if (existingRide) {
@@ -89,6 +100,26 @@ export const requestRideService = async (userId, { pickup, drop, rideType }) => 
 
     console.log(`🚗 New ride request ${ride._id} sent to available drivers`);
     logger.info('Ride requested', { userId, rideId: ride._id, type: rideType || 'economy' });
+    
+    // Send notification to rider
+    await NotificationService.notifyRideRequestSent(userId, ride._id);
+    
+    // Send notifications to nearby available drivers
+    const Driver = (await import('../models/Driver.js')).default;
+    const nearbyDrivers = await Driver.find({ 
+      isOnline: true, 
+      isAvailable: true 
+    }).limit(10);
+    
+    for (const driver of nearbyDrivers) {
+      await NotificationService.notifyNewRideRequest(
+        driver._id, 
+        ride._id, 
+        ride.pickupLocation.address,
+        5 // placeholder distance
+      );
+    }
+    
     return { success: true, ride };
   } catch (err) {
     logger.error('requestRideService error', { error: err.message, userId });
@@ -157,6 +188,11 @@ export const cancelRideService = async (userId, rideId) => {
     // Emit real-time event to admin and ride room
     emitToAdmin('ride:cancelled', { rideId: ride._id, userId });
     emitToRide(rideId, 'ride:status_changed', { status: 'cancelled', ride });
+    
+    // Notify driver if ride was already assigned
+    if (ride.driver) {
+      await NotificationService.notifyRiderCancelled(ride.driver, ride._id);
+    }
 
     return { success: true, ride };
   } catch (err) {
@@ -308,9 +344,7 @@ export const applyCouponService = async (userId, code) => {
 // ===== NOTIFICATION SERVICES =====
 export const getNotificationsService = async (userId) => {
   try {
-    // TODO: Implement real notification system with database
-    // For now, returning empty array
-    return { success: true, notifications: [] };
+    return await NotificationService.getNotifications(userId);
   } catch (err) {
     console.error('getNotificationsService error:', err);
     throw err;
@@ -319,8 +353,7 @@ export const getNotificationsService = async (userId) => {
 
 export const markNotificationReadService = async (userId, notificationId) => {
   try {
-    // TODO: Implement notification read status update
-    return { success: true };
+    return await NotificationService.markAsRead(notificationId, userId);
   } catch (err) {
     console.error('markNotificationReadService error:', err);
     throw err;

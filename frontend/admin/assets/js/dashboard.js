@@ -262,7 +262,7 @@ class AdminDashboard {
 }
 
 // Check authentication BEFORE initializing dashboard
-const token = localStorage.getItem('token');
+const token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
 if (!token) {
   alert('Please login first to access the admin dashboard');
   window.location.href = '../../login.html';

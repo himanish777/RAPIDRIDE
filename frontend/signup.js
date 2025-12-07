@@ -1,4 +1,3 @@
-console.log("SIGNUP.JS LOADED!");
 const url = "http://localhost:5500"
 
 async function signup() {
@@ -32,7 +31,6 @@ async function signup() {
     });
 
     const data = await res.json();
-    console.log("Signup response:", data);
 
     if (data.success) {
       alert("Signup successful! Redirecting to login...");
@@ -42,6 +40,5 @@ async function signup() {
     }
   } catch (error) {
     alert("ERROR: " + error.message);
-    console.error("Full error:", error);
   }
 }

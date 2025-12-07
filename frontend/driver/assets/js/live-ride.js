@@ -19,8 +19,8 @@ class DriverLiveRide {
   async init() {
     console.log('🚗 Initializing driver live ride...');
     
-    // Check authentication - driver uses 'token' key
-    const token = localStorage.getItem('token');
+    // Check authentication
+    const token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
     if (!token) {
       console.error('❌ No token found in live-ride');
       alert('Please login as driver first');
@@ -70,7 +70,7 @@ class DriverLiveRide {
         console.log('✅ Loaded ride data from localStorage:', this.rideData);
       } else {
         // Fetch from API
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
         const response = await fetch('/api/driver/current-ride', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -361,7 +361,7 @@ class DriverLiveRide {
 
   async handleArrivedAtPickup() {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
       const response = await fetch(`/api/driver/rides/${this.rideId}/status`, {
         method: 'POST',
         headers: {
@@ -385,7 +385,7 @@ class DriverLiveRide {
 
   async handleStartTrip() {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
       const response = await fetch(`/api/driver/start-ride`, {
         method: 'POST',
         headers: {
@@ -409,7 +409,7 @@ class DriverLiveRide {
 
   async handleCompleteTrip() {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
       const response = await fetch(`/api/driver/complete-ride`, {
         method: 'POST',
         headers: {
@@ -433,7 +433,7 @@ class DriverLiveRide {
     try {
       document.getElementById('cancelModal').style.display = 'none';
       
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
       const response = await fetch(`/api/driver/cancel-ride`, {
         method: 'POST',
         headers: {

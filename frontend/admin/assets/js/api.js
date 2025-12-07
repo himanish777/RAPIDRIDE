@@ -2,7 +2,7 @@
 class AdminAPI {
   constructor() {
     this.baseURL = 'http://localhost:5500';
-    this.token = localStorage.getItem('token');
+    this.token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
   }
 
   async request(endpoint, options = {}) {

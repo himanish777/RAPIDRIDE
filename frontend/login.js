@@ -31,7 +31,36 @@ async function login() {
     }
 
     if (data.success) {
-      localStorage.setItem("token", data.token);
+      // Store token with consistent key
+      localStorage.setItem("rapidride_token", data.token);
+      localStorage.setItem("token", data.token); // Keep for backward compatibility
+      
+      // Store user data based on role
+      if (data.user) {
+        if (data.user.role === 'rider') {
+          localStorage.setItem("rapidride_rider", JSON.stringify({
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            role: data.user.role
+          }));
+        } else if (data.user.role === 'driver') {
+          localStorage.setItem("rapidride_driver", JSON.stringify({
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            role: data.user.role
+          }));
+        } else if (data.user.role === 'admin') {
+          localStorage.setItem("rapidride_admin", JSON.stringify({
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            role: data.user.role
+          }));
+        }
+      }
+      
       alert("Login successful!");
       
       // Redirect based on user role

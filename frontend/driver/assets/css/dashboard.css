@@ -261,19 +261,24 @@ input:checked + .toggle-slider:before {
   height: 100%;
 }
 
+
 .notification-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  background: var(--gradient-primary);
-  color: white;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 6px;
-  border-radius: 12px;
-  min-width: 20px;
+  top: -10px;
+  right: -10px;
+  background: #e53935;
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 50%;
+  min-width: 24px;
+  min-height: 24px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(107, 91, 110, 0.4);
+  border: 2px solid #fff;
+  z-index: 10;
+  transition: background 0.2s, color 0.2s;
   animation: pulse 2s ease-in-out infinite;
 }
 

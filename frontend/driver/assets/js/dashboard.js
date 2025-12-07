@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkSetupStatus();
   
   // Check authentication
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
   console.log('🔑 Driver Dashboard - Token check:', token ? 'Token exists' : 'No token found');
   console.log('🔑 Token value:', token);
   
@@ -251,10 +251,7 @@ async function handleOnlineToggle(e) {
       
       state.onlineStartTime = Date.now();
       
-      // Start listening for ride requests
-      startListeningForRequests();
-      
-      // Subscribe to ride requests via socket
+      // Subscribe to ride requests via socket (Socket.IO handles real ride requests)
       if (driverSocketManager.isConnected()) {
         driverSocketManager.subscribeToRideRequests();
         console.log('✅ Subscribed to ride requests');
@@ -293,22 +290,24 @@ async function handleOnlineToggle(e) {
 }
 
 // Start Listening for Ride Requests (Simulated)
-function startListeningForRequests() {
-  // Simulate receiving a ride request after random time
-  setTimeout(() => {
-    if (state.isOnline && !state.currentRide) {
-      showRideRequest({
-        id: 'RIDE' + Math.random().toString(36).substr(2, 9),
-        pickup: 'MG Road, Bangalore',
-        drop: 'Koramangala, Bangalore',
-        distance: '8.5 km',
-        fare: '₹250',
-        riderName: 'John Doe',
-        riderRating: '4.8'
-      });
-    }
-  }, Math.random() * 20000 + 10000); // Random between 10-30 seconds
-}
+// DEPRECATED: This function was for testing only and caused infinite loops
+// Real ride requests are now handled via Socket.IO (ride:newRequest event)
+// function startListeningForRequests() {
+//   // Simulate receiving a ride request after random time
+//   setTimeout(() => {
+//     if (state.isOnline && !state.currentRide) {
+//       showRideRequest({
+//         id: 'RIDE' + Math.random().toString(36).substr(2, 9),
+//         pickup: 'MG Road, Bangalore',
+//         drop: 'Koramangala, Bangalore',
+//         distance: '8.5 km',
+//         fare: '₹250',
+//         riderName: 'John Doe',
+//         riderRating: '4.8'
+//       });
+//     }
+//   }, Math.random() * 20000 + 10000); // Random between 10-30 seconds
+// }
 
 function stopListeningForRequests() {
   if (state.requestTimer) {
@@ -408,10 +407,8 @@ function declineRideRequest() {
   document.getElementById('requestCard').style.display = 'none';
   showNotification('Ride request declined', 'info');
   
-  // Continue listening for new requests
-  if (state.isOnline) {
-    startListeningForRequests();
-  }
+  // Socket.IO will automatically send new ride requests when available
+  // Removed startListeningForRequests() call - it was a simulation function causing infinite loops
 }
 
 // Start Ride
@@ -474,10 +471,7 @@ async function completeRide() {
     // Clear current ride
     state.currentRide = null;
     
-    // Continue listening for new requests
-    if (state.isOnline) {
-      startListeningForRequests();
-    }
+    // Socket.IO will automatically send new ride requests when available
   } catch (error) {
     console.error('Error completing ride:', error);
     showNotification('Failed to complete ride', 'error');
@@ -510,9 +504,7 @@ async function cancelRide() {
     
     showNotification('Ride cancelled', 'warning');
     
-    if (state.isOnline) {
-      startListeningForRequests();
-    }
+    // Socket.IO will automatically send new ride requests when available
   } catch (error) {
     console.error('Error cancelling ride:', error);
     showNotification('Failed to cancel ride', 'error');
@@ -1051,7 +1043,7 @@ async function handleAcceptRide(rideId) {
   if (rejectBtn) rejectBtn.disabled = true;
   
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('rapidride_token') || localStorage.getItem('token');
     console.log('🔑 Token check:', token ? 'EXISTS' : 'MISSING');
     
     if (!token) {
