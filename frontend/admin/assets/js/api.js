@@ -90,6 +90,10 @@ class AdminAPI {
     return this.request(`/api/admin/analytics/popular-routes?limit=${limit}`);
   }
 
+  async getAnalytics(period = '7d') {
+    return this.request(`/api/admin/analytics?period=${period}`);
+  }
+
   // Logs
   async getSystemLogs(page = 1, limit = 100, level = null) {
     const params = new URLSearchParams({ page, limit });
@@ -97,11 +101,27 @@ class AdminAPI {
     return this.request(`/api/admin/logs?${params}`);
   }
 
-  // Metrics
-  async getMetrics() {
-    const response = await fetch(`${this.baseURL}/metrics`);
+  // Monitoring - Prometheus Metrics
+  async getMetricsData() {
+    return this.request('/api/admin/monitoring/metrics');
+  }
+
+  async getMonitoringLogs(type = 'combined', limit = 50) {
+    return this.request(`/api/admin/monitoring/logs?type=${type}&limit=${limit}`);
+  }
+
+  // Raw Prometheus metrics endpoint
+  async getRawMetrics() {
+    const response = await fetch(`${this.baseURL}/metrics`, {
+      headers: {
+        'Authorization': this.token ? `Bearer ${this.token}` : '',
+      }
+    });
     return response.text();
   }
 }
 
 export default AdminAPI;
+
+// Export class for use as named export
+export { AdminAPI as API };

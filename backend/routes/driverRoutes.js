@@ -21,6 +21,7 @@ router.post("/location", driverController.updateLocation);
 
 // ===== RIDE MANAGEMENT ROUTES =====
 router.get("/current-ride", driverController.getCurrentRide);
+router.get("/available-rides", driverController.getAvailableRides);
 router.post("/accept-ride", driverController.acceptRide);
 router.post("/rides/:rideId/accept", driverController.acceptRide); // RESTful endpoint
 router.post("/rides/:rideId/status", driverController.updateRideStatus); // Update ride status

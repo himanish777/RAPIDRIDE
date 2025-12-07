@@ -36,6 +36,13 @@ export const requestRideService = async (userId, { pickup, drop, rideType }) => 
       return { success: false, message: 'pickup and drop required' };
     }
 
+    // Check if the user exists as a rider
+    const riderExists = await Rider.findById(userId);
+    if (!riderExists) {
+      logger.error('requestRideService: User is not a rider', { userId });
+      return { success: false, message: 'Only riders can request rides. Please sign up as a rider.' };
+    }
+
     // Check if user already has an active ride
     const existingRide = await Ride.findOne({
       rider: userId,

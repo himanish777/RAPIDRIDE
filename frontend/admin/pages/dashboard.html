@@ -98,28 +98,117 @@
 
     <!-- Metrics Tab -->
     <div class="tab-content" id="metrics-tab">
-      <div class="card">
-        <h3 class="card-title">System Metrics</h3>
-        <p class="metrics-info">📊 Prometheus metrics available at: <code>/metrics</code></p>
-        <div class="metrics-stats">
-          <div class="metric-item">
-            <div class="metric-label">Request Rate</div>
-            <div class="metric-value" id="requestRate">Loading...</div>
+      <!-- Real-time Metrics Overview -->
+      <div class="metrics-header">
+        <h2 class="section-title">📊 Live Monitoring Dashboard</h2>
+        <button class="btn-refresh" id="refreshMetricsBtn">🔄 Refresh</button>
+      </div>
+
+      <!-- Key Performance Indicators -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon">🚗</div>
+          <div class="kpi-content">
+            <div class="kpi-value" id="kpiActiveRides">0</div>
+            <div class="kpi-label">Active Rides</div>
+            <div class="kpi-trend positive" id="kpiRidesTrend">↑ +12%</div>
           </div>
-          <div class="metric-item">
-            <div class="metric-label">Error Rate</div>
-            <div class="metric-value" id="errorRate">Loading...</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">👥</div>
+          <div class="kpi-content">
+            <div class="kpi-value" id="kpiActiveUsers">0</div>
+            <div class="kpi-label">Active Users</div>
+            <div class="kpi-trend positive" id="kpiUsersTrend">↑ +8%</div>
           </div>
-          <div class="metric-item">
-            <div class="metric-label">Avg Response Time</div>
-            <div class="metric-value" id="avgResponseTime">Loading...</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">✅</div>
+          <div class="kpi-content">
+            <div class="kpi-value" id="kpiCompletedRides">0</div>
+            <div class="kpi-label">Completed Today</div>
+            <div class="kpi-trend positive" id="kpiCompletedTrend">↑ +15%</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">⚡</div>
+          <div class="kpi-content">
+            <div class="kpi-value" id="kpiApiStatus">UP</div>
+            <div class="kpi-label">API Status</div>
+            <div class="kpi-trend positive" id="kpiApiTrend">99.9%</div>
           </div>
         </div>
       </div>
 
-      <div class="card">
-        <h3 class="card-title">Business Metrics (Last 7 Days)</h3>
-        <div id="businessMetrics" class="business-metrics"></div>
+      <!-- Charts Grid -->
+      <div class="charts-grid">
+        <!-- Rides Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">📈 Rides Overview</h3>
+            <div class="chart-legend">
+              <span class="legend-item"><span class="dot dot-requested"></span> Requested</span>
+              <span class="legend-item"><span class="dot dot-completed"></span> Completed</span>
+              <span class="legend-item"><span class="dot dot-cancelled"></span> Cancelled</span>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="ridesChart"></canvas>
+          </div>
+        </div>
+
+        <!-- System Health Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">💚 System Health</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="systemHealthChart"></canvas>
+          </div>
+        </div>
+
+        <!-- User Activity Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">👥 User Activity</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="userActivityChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Performance Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">⚡ Performance Metrics</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="performanceChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Logs Viewer -->
+      <div class="logs-viewer-card">
+        <div class="logs-header">
+          <h3 class="logs-title">📝 Live System Logs</h3>
+          <div class="logs-controls">
+            <select id="logTypeFilter" class="log-filter">
+              <option value="combined">All Logs</option>
+              <option value="error">Errors Only</option>
+            </select>
+            <select id="logLevelFilter" class="log-filter">
+              <option value="">All Levels</option>
+              <option value="error">Error</option>
+              <option value="warn">Warning</option>
+              <option value="info">Info</option>
+            </select>
+            <button class="btn-clear-logs" id="clearLogsBtn">🗑️ Clear</button>
+          </div>
+        </div>
+        <div class="logs-container" id="logsContainer">
+          <div class="logs-loading">Loading logs...</div>
+        </div>
       </div>
     </div>
 
@@ -258,6 +347,9 @@
     </div>
   </div>
 
+  <!-- Chart.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script type="module" src="../assets/js/dashboard.js"></script>
+  <script type="module" src="../assets/js/monitoring.js"></script>
 </body>
 </html>

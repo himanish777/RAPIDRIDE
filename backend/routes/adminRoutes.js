@@ -31,6 +31,11 @@ router.get('/rides/:rideId', authMiddleware, verifyAdmin, adminController.getRid
 router.get('/analytics/revenue', authMiddleware, verifyAdmin, adminController.getRevenueAnalytics);
 router.get('/analytics/rides', authMiddleware, verifyAdmin, adminController.getRideAnalytics);
 router.get('/analytics/popular-routes', authMiddleware, verifyAdmin, adminController.getPopularRoutes);
+router.get('/analytics', authMiddleware, verifyAdmin, adminController.getAnalytics);
+
+// Monitoring - Prometheus metrics & logs
+router.get('/monitoring/metrics', authMiddleware, verifyAdmin, adminController.getMetricsData);
+router.get('/monitoring/logs', authMiddleware, verifyAdmin, adminController.getLogs);
 
 // Logs
 router.get('/logs', authMiddleware, verifyAdmin, adminController.getSystemLogs);

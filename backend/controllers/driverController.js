@@ -92,6 +92,16 @@ export const getCurrentRide = async (req, res) => {
   }
 };
 
+export const getAvailableRides = async (req, res) => {
+  try {
+    const result = await driverService.getAvailableRidesService();
+    return res.json(result);
+  } catch (err) {
+    logger.error('getAvailableRides error', { error: err.message, userId: req.user.userId });
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 export const acceptRide = async (req, res) => {
   try {
     const rideId = req.body.rideId || req.params.rideId;

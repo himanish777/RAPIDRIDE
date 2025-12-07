@@ -135,6 +135,27 @@ function setupEventListeners() {
   document.getElementById('viewHistoryBtn')?.addEventListener('click', showRideHistory);
   document.getElementById('supportBtn')?.addEventListener('click', showSupportModal);
   
+  // View Current Ride button (in sidebar)
+  document.getElementById('viewCurrentRideBtn')?.addEventListener('click', async () => {
+    try {
+      const result = await driverAPI.getCurrentRide();
+      if (result.success && result.ride) {
+        window.location.href = `live-ride.html?rideId=${result.ride._id}`;
+      } else {
+        showNotification('No active ride found', 'info');
+      }
+    } catch (error) {
+      console.error('Error loading current ride:', error);
+      showNotification('Failed to load current ride', 'error');
+    }
+  });
+  
+  // Refresh Available Rides button
+  document.getElementById('refreshRidesBtn')?.addEventListener('click', () => {
+    loadAvailableRides();
+    showNotification('Refreshed available rides', 'success');
+  });
+  
   // Settings
   document.getElementById('settingsBtn')?.addEventListener('click', showSettingsModal);
   document.getElementById('closeSettingsModalBtn')?.addEventListener('click', closeModal);
@@ -254,6 +275,9 @@ async function handleOnlineToggle(e) {
       // Start listening for ride requests
       startListeningForRequests();
       
+      // Load available ride requests
+      loadAvailableRides();
+      
       // Subscribe to ride requests via socket
       if (driverSocketManager.isConnected()) {
         driverSocketManager.subscribeToRideRequests();
@@ -292,22 +316,11 @@ async function handleOnlineToggle(e) {
   }
 }
 
-// Start Listening for Ride Requests (Simulated)
+// Start Listening for Ride Requests (Real-time via Socket)
 function startListeningForRequests() {
-  // Simulate receiving a ride request after random time
-  setTimeout(() => {
-    if (state.isOnline && !state.currentRide) {
-      showRideRequest({
-        id: 'RIDE' + Math.random().toString(36).substr(2, 9),
-        pickup: 'MG Road, Bangalore',
-        drop: 'Koramangala, Bangalore',
-        distance: '8.5 km',
-        fare: '₹250',
-        riderName: 'John Doe',
-        riderRating: '4.8'
-      });
-    }
-  }, Math.random() * 20000 + 10000); // Random between 10-30 seconds
+  // Real ride requests come via socket.io (ride:newRequest event)
+  // No simulation needed - driver will receive actual ride requests
+  console.log('🎯 Driver is now listening for real ride requests via socket');
 }
 
 function stopListeningForRequests() {
@@ -626,6 +639,57 @@ async function loadPerformanceMetrics() {
     // Keep default values on error
   }
 }
+
+// Load Available Ride Requests
+async function loadAvailableRides() {
+  try {
+    const result = await driverAPI.getAvailableRides();
+    const availableRidesList = document.getElementById('availableRidesList');
+    const availableRidesCard = document.getElementById('availableRidesCard');
+    
+    if (result.success && result.rides && result.rides.length > 0) {
+      availableRidesCard.style.display = 'block';
+      availableRidesList.innerHTML = result.rides.map(ride => `
+        <div class="available-ride-item" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; margin-bottom: 12px; background: #f9f9f9;">
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+            <div>
+              <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${ride.rider?.name || 'Rider'}</div>
+              <div style="font-size: 12px; color: #666;">⭐ ${ride.rider?.rating?.toFixed(1) || '5.0'}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 600; color: #10b981;">₹${ride.fare || '--'}</div>
+              <div style="font-size: 12px; color: #666;">${ride.type || 'economy'}</div>
+            </div>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <div style="display: flex; align-items: start; margin-bottom: 4px;">
+              <span style="margin-right: 8px;">📍</span>
+              <span style="font-size: 14px; color: #555;">${ride.pickupLocation?.address || 'Pickup location'}</span>
+            </div>
+            <div style="display: flex; align-items: start;">
+              <span style="margin-right: 8px;">🎯</span>
+              <span style="font-size: 14px; color: #555;">${ride.dropoffLocation?.address || 'Drop location'}</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button class="btn-primary" onclick="handleAcceptRide('${ride._id}')" style="flex: 1; padding: 8px; font-size: 14px;">Accept</button>
+            <button class="btn-secondary" onclick="viewRideDetails('${ride._id}')" style="flex: 1; padding: 8px; font-size: 14px;">Details</button>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      availableRidesCard.style.display = state.isOnline ? 'block' : 'none';
+      availableRidesList.innerHTML = '<p class="empty-state" style="text-align: center; color: #999; padding: 20px;">No available rides at the moment</p>';
+    }
+  } catch (error) {
+    console.error('Error loading available rides:', error);
+  }
+}
+
+// View Ride Details
+window.viewRideDetails = function(rideId) {
+  showNotification('Ride details coming soon', 'info');
+};
 
 // Show Earnings Modal
 function showEarningsModal() {

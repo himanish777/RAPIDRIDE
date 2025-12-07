@@ -462,3 +462,19 @@ export {
   restoreUserService,
   getPopularRoutesService,
 };
+
+// Get analytics service (stub for monitoring dashboard)
+export const getAnalyticsService = async (period = '7d') => {
+  try {
+    // Return empty analytics for now
+    return {
+      period,
+      revenue: { total: 0, data: [] },
+      rides: { total: 0, data: [] },
+      users: { total: 0, data: [] }
+    };
+  } catch (error) {
+    logger.error('getAnalyticsService error', { error: error.message });
+    throw error;
+  }
+};

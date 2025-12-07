@@ -179,6 +179,25 @@ export const updateLocationService = async (driverId, { latitude, longitude }) =
 };
 
 // ===== RIDE MANAGEMENT SERVICES =====
+export const getAvailableRidesService = async () => {
+  try {
+    // Find rides that are searching for a driver (not yet assigned)
+    const availableRides = await Ride.find({
+      status: 'searching',
+      driver: null
+    })
+    .populate('rider', 'name phone rating')
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .lean();
+
+    return { success: true, rides: availableRides };
+  } catch (err) {
+    logger.error('getAvailableRidesService error', { error: err.message });
+    throw err;
+  }
+};
+
 export const getCurrentRideService = async (driverId) => {
   try {
     const ride = await Ride.findOne({ 

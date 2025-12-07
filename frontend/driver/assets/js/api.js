@@ -66,6 +66,7 @@ export const driverAPI = {
   
   // Rides
   getCurrentRide: () => apiRequest('/api/driver/current-ride'),
+  getAvailableRides: () => apiRequest('/api/driver/available-rides'),
   getRideHistory: (page = 1, limit = 10) => apiRequest(`/api/driver/ride-history?page=${page}&limit=${limit}`),
   getEarningsHistory: (page = 1, limit = 10) => apiRequest(`/api/driver/earnings-history?page=${page}&limit=${limit}`),
   
